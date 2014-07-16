@@ -8,6 +8,7 @@ import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.Arrays;
 
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
@@ -60,19 +61,19 @@ public class TweetIndexer {
 		org.apache.lucene.document.Document document = new Document();
 		document.add(new TextField("content", tweet.getText(), Field.Store.YES));
 		document.add(new LongField("id", tweet.getId(), Field.Store.YES));
-		this.resolveUrls(tweet.getURLEntities());
+		document.add(new TextField("urlContent", this.resolveUrls(tweet.getURLEntities()), Field.Store.YES));
 		try {
 			this.indexWriter.addDocument(document);
 		} catch (IOException e) {
 			System.out.println("Lucene index could not be written.");
 			e.printStackTrace();
 		}
-		
-		//TODO: add content of URLs
+
 	}
 	
-	public void resolveUrls(URLEntity[] urls) {		
-		System.out.println(urls.length);
+	public String resolveUrls(URLEntity[] urls) {
+		//System.out.println(urls.length);
+        String result = "";
 		org.jsoup.nodes.Document urlDoc;
 		for(int i = 0; i < urls.length; i++) {			
 			try {
@@ -80,6 +81,7 @@ public class TweetIndexer {
 				Elements paragraphs = urlDoc.select("p");//ul?, title, h1
 				Elements titles = urlDoc.select("title");
 				Elements h1 = urlDoc.select("h1");
+                result = result + titles + paragraphs + h1;
 				
 				//Elements ul = doc.select("ul");
 				//System.out.println("Paragraphs: " + paragraphs.text());
@@ -98,21 +100,24 @@ public class TweetIndexer {
 //	            br.close();
 			} catch (IOException e) {
 				System.out.println("Could not open Url-connection for " + urls[i].getURL());
-				e.printStackTrace();
+				//e.printStackTrace();
 			}
 		}
+        return result;
 	}
 	private void addTweetToCsv(Status tweet) {
-		String[] line = new String[5];
+		String[] line = new String[4];
 		line[0] = String.valueOf(tweet.getId());
 		line[1] = String.valueOf(tweet.getUser().getId());
 		line[2] = String.valueOf(tweet.getCreatedAt());
-		line[3] = String.valueOf(tweet.getHashtagEntities());
-		line[4] = String.valueOf(tweet.getFavoriteCount());
-		line[5] = String.valueOf(tweet.getPlace().getId());
+		line[3] = Arrays.toString(tweet.getHashtagEntities());
+		//line[4] = String.valueOf(tweet.getFavoriteCount());
+        //line[5] = String.valueOf(tweet.getRetweetCount()); // always 0 because tweets are new
+		//line[5] = String.valueOf(tweet.getPlace().getId());
+        //tweet.getGeoLocation();
 		//tweet.getLang();
-		//tweet.getRetweetCount();
 		//tweet.getScopes();
+        csvWriter.writeNext(line);
 	}
 	
 	public void closeWriter() {

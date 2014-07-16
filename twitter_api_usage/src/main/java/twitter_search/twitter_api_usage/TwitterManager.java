@@ -59,7 +59,7 @@ public class TwitterManager
         
         TweetListener listener = new TweetListener();
         twitterStream.addListener(listener);
-        //twitterStream.sample();
-        listener.search("office");
+        twitterStream.sample();
+        //listener.search("office");
     }
 }

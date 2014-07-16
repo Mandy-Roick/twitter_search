@@ -22,7 +22,7 @@ public class TweetListener implements StatusListener {
 	}
 
     public void onStatus(Status status) {
-    	if(status.getLang().equals("en") && counter < 1000) {
+    	if(status.getLang().equals("de") && counter < 1000) {
     		this.ti.addTweet(status);	
     		counter++;
     		
@@ -34,7 +34,8 @@ public class TweetListener implements StatusListener {
     	if(counter == 1000) {
     		System.out.println("closed :)");
     		this.ti.closeWriter();
-    		counter++;
+            System.exit(1);
+    		//counter++;
     	}
     	
     }
