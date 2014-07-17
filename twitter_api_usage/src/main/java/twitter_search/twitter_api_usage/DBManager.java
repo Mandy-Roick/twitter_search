@@ -10,15 +10,25 @@ import java.sql.SQLException;
 public class DBManager {
     private Connection connection;
 
+    private String password = "";
+    private String user = "";
+
+    public DBManager() {
+        connect();
+    }
+
     public void connect() {
         try {
             connection = DriverManager.getConnection(
                             "jdbc:postgresql://isfet.hpi.uni-potsdam.de:5432/max?searchpath=mandy_masterarbeit",
-                            "roick", "");
+                            this.user, this.password);
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-
+    protected void finalize() throws Throwable {
+        this.connection.close();
+        super.finalize();
+    }
 }
