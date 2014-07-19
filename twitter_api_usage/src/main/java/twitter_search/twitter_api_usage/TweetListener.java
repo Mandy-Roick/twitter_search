@@ -8,22 +8,25 @@ import twitter4j.StatusDeletionNotice;
 import twitter4j.StatusListener;
 
 public class TweetListener implements StatusListener {
-	private TweetIndexer ti;
+	//private TweetIndexer ti;
+    private DBManager dbManager;
 	private int counter;
 	
 	public TweetListener() {
-		try {
-			String folder = "C:\\Users\\kleiner Klotz\\Documents\\HPI\\4. Semester\\Masterarbeit\\Evaluation\\Corpus\\";
-			this.ti = new TweetIndexer(folder + "index", folder + "metadata.csv");
-		} catch (IOException e) {
-			System.out.println("Index file could not be open.");
-			e.printStackTrace();
-		}
+        this.dbManager = new DBManager();
+//		try {
+//			String folder = "C:\\Users\\kleiner Klotz\\Documents\\HPI\\4. Semester\\Masterarbeit\\Evaluation\\Corpus\\";
+//			this.ti = new TweetIndexer(folder + "index", folder + "metadata.csv");
+//		} catch (IOException e) {
+//			System.out.println("Index file could not be open.");
+//			e.printStackTrace();
+//		}
 	}
 
     public void onStatus(Status status) {
     	if(status.getLang().equals("de") && counter < 1000) {
-    		this.ti.addTweet(status);	
+    		//this.ti.addTweet(status);
+            this.dbManager.writeTweetToDB(status);
     		counter++;
     		
     		if((counter % 10) == 0) {
@@ -33,7 +36,7 @@ public class TweetListener implements StatusListener {
     	}
     	if(counter == 1000) {
     		System.out.println("closed :)");
-    		this.ti.closeWriter();
+    		//this.ti.closeWriter();
             System.exit(1);
     		//counter++;
     	}
@@ -61,6 +64,6 @@ public class TweetListener implements StatusListener {
     }
     
     public void search(String query) {
-    	ti.search(query);
+    	//ti.search(query);
     }
 }
