@@ -3,6 +3,7 @@ package twitter_search.twitter_api_usage;
 import twitter4j.Status;
 
 import java.sql.*;
+import org.postgis.*;
 
 /**
  * Created by Mandy Roick on 14.07.2014. according to example by Maximilian Jenders
@@ -38,15 +39,16 @@ public class DBManager {
         } else {
             createTweet(tweet);
         }
+
+        //TODO: add Hashtags and url content
     }
 
     private void createTweet(Status tweet) {
         try {
             PreparedStatement statement = connection.prepareStatement("" +
                     "INSERT INTO mandy_masterarbeit.twitter_tweet(id, content, user_id, created_at, " +
-                    "reply_id, language, place_id, retweeted; retweeted_id, truncated, coordinates)" +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, pointfromtext('POINT(' || ? || ' ' || ? || ')',2029))");
-                    // This last magic number is a SRID. TODO: replace by real SRID from Twitter.
+                    "reply_id, language, retweeted, retweeted_id, truncated, place_id, coordinates_x, coordinates_y)" +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? , ?)");
 
             statement.setLong(1, tweet.getId());
             statement.setString(2, tweet.getText());
@@ -54,20 +56,26 @@ public class DBManager {
             java.sql.Date sqlDate = new Date(tweet.getCreatedAt().getTime());
             statement.setDate(4, sqlDate);
             statement.setLong(5, tweet.getInReplyToStatusId());
-            statement.setNString(6, tweet.getLang());
-            if (tweet.getPlace() == null) {
-                statement.setString(7, null);
-            } else {
-                statement.setString(7, tweet.getPlace().getId());
-            }
-            statement.setBoolean(8, tweet.isRetweet());
+            statement.setString(6, tweet.getLang());
+
+            statement.setBoolean(7, tweet.isRetweet());
             if (tweet.isRetweet()) {
-                statement.setLong(9, tweet.getRetweetedStatus().getId());
+                statement.setLong(8, tweet.getRetweetedStatus().getId());
+            } else {
+                statement.setNull(8, Types.BIGINT);
             }
-            statement.setBoolean(10, tweet.isTruncated());
+            statement.setBoolean(9, tweet.isTruncated());
+            if (tweet.getPlace() == null) {
+                statement.setNull(10, Types.VARCHAR);
+            } else {
+                statement.setString(10, tweet.getPlace().getId());
+            }
             if (tweet.getGeoLocation() != null) {
-                statement.setDouble(11, tweet.getGeoLocation().getLatitude());
-                statement.setDouble(12, tweet.getGeoLocation().getLongitude());
+                statement.setDouble(11, tweet.getGeoLocation().getLongitude());
+                statement.setDouble(12, tweet.getGeoLocation().getLatitude());
+            } else {
+                statement.setNull(11, Types.DOUBLE);
+                statement.setNull(12, Types.DOUBLE);
             }
 
             statement.execute();
@@ -86,11 +94,11 @@ public class DBManager {
                     "created_at = ?, " +
                     "reply_id = ?, " +
                     "language = ?, " +
-                    "place_id = ?, " +
                     "retweeted = ?, " +
                     "retweeted_id = ?, " +
                     "truncated = ?, " +
-                    "coordinates = pointfromtext('POINT(' || ? || ' ' || ? || ')',2029), " +
+                    "coordinates_x = ?, coordinates_y = ? " +
+                    "place_id = ?, " +
                     "WHERE id = ?");
 
             statement.setString(1, tweet.getText());
@@ -99,20 +107,29 @@ public class DBManager {
             statement.setDate(3, sqlDate);
             statement.setLong(4, tweet.getInReplyToStatusId());
             statement.setNString(5, tweet.getLang());
-            if (tweet.getPlace() == null) {
-                statement.setString(6, null);
-            } else {
-                statement.setString(6, tweet.getPlace().getId());
-            }
-            statement.setBoolean(7, tweet.isRetweet());
+
+            statement.setBoolean(6, tweet.isRetweet());
             if (tweet.isRetweet()) {
-                statement.setLong(8, tweet.getRetweetedStatus().getId());
+                statement.setLong(7, tweet.getRetweetedStatus().getId());
+            } else {
+                statement.setNull(7, Types.BIGINT);
             }
-            statement.setBoolean(9, tweet.isTruncated());
+            statement.setBoolean(8, tweet.isTruncated());
             if (tweet.getGeoLocation() != null) {
+                statement.setDouble(9, tweet.getGeoLocation().getLongitude());
                 statement.setDouble(10, tweet.getGeoLocation().getLatitude());
-                statement.setDouble(11, tweet.getGeoLocation().getLongitude());
+            } else {
+                statement.setNull(9, Types.DOUBLE);
+                statement.setNull(10, Types.DOUBLE);
             }
+
+            if (tweet.getPlace() == null) {
+                statement.setNull(11, Types.VARCHAR);
+            } else {
+                statement.setString(11, tweet.getPlace().getId());
+            }
+
+
             statement.setLong(12, tweet.getId());
 
             statement.execute();
