@@ -5,7 +5,7 @@ import twitter4j.Status;
 import java.sql.*;
 
 /**
- * Created by Mandy Roick on 14.07.2014.
+ * Created by Mandy Roick on 14.07.2014. according to example by Maximilian Jenders
  */
 public class DBManager {
     private Connection connection;
@@ -33,7 +33,7 @@ public class DBManager {
     }
 
     public void writeTweetToDB(Status tweet) {
-        if (tweetExists(tweet.getId())) {
+        if (tweetDoesExist(tweet.getId())) {
             updateTweet(tweet);
         } else {
             createTweet(tweet);
@@ -69,15 +69,74 @@ public class DBManager {
                 statement.setDouble(11, tweet.getGeoLocation().getLatitude());
                 statement.setDouble(12, tweet.getGeoLocation().getLongitude());
             }
+
+            statement.execute();
+            statement.close();
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
     private void updateTweet(Status tweet) {
+        try {
+            PreparedStatement statement = connection.prepareStatement("" +
+                    "UPDATE mandy_masterarbeit.twitter_tweet" +
+                    "SET content = ?, " +
+                    "user_id = ?, " +
+                    "created_at = ?, " +
+                    "reply_id = ?, " +
+                    "language = ?, " +
+                    "place_id = ?, " +
+                    "retweeted = ?, " +
+                    "retweeted_id = ?, " +
+                    "truncated = ?, " +
+                    "coordinates = pointfromtext('POINT(' || ? || ' ' || ? || ')',2029), " +
+                    "WHERE id = ?");
+
+            statement.setString(1, tweet.getText());
+            statement.setLong(2, tweet.getUser().getId());
+            java.sql.Date sqlDate = new Date(tweet.getCreatedAt().getTime());
+            statement.setDate(3, sqlDate);
+            statement.setLong(4, tweet.getInReplyToStatusId());
+            statement.setNString(5, tweet.getLang());
+            if (tweet.getPlace() == null) {
+                statement.setString(6, null);
+            } else {
+                statement.setString(6, tweet.getPlace().getId());
+            }
+            statement.setBoolean(7, tweet.isRetweet());
+            if (tweet.isRetweet()) {
+                statement.setLong(8, tweet.getRetweetedStatus().getId());
+            }
+            statement.setBoolean(9, tweet.isTruncated());
+            if (tweet.getGeoLocation() != null) {
+                statement.setDouble(10, tweet.getGeoLocation().getLatitude());
+                statement.setDouble(11, tweet.getGeoLocation().getLongitude());
+            }
+            statement.setLong(12, tweet.getId());
+
+            statement.execute();
+            statement.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
-    private boolean tweetExists(long id) {
-        return false;
+    private boolean tweetDoesExist(long tweetId) {
+        boolean doesExist = false;
+        try {
+            Statement statement = connection.createStatement();
+            ResultSet result = statement.executeQuery("SELECT * FROM mandy_masterarbeit.twitter_tweet WHERE id = " + tweetId);
+
+            if(result.next()) {
+                doesExist = true;
+            }
+
+            statement.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return doesExist;
     }
 }
