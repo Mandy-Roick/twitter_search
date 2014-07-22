@@ -9,11 +9,11 @@ import twitter4j.StatusListener;
 
 public class TweetListener implements StatusListener {
 	//private TweetIndexer ti;
-    private DBManager dbManager;
+    private TweetToDBWriter dbWriter;
 	private int counter;
 	
 	public TweetListener() {
-        this.dbManager = new DBManager();
+        this.dbWriter = new TweetToDBWriter();
 //		try {
 //			String folder = "C:\\Users\\kleiner Klotz\\Documents\\HPI\\4. Semester\\Masterarbeit\\Evaluation\\Corpus\\";
 //			this.ti = new TweetIndexer(folder + "index", folder + "metadata.csv");
@@ -26,7 +26,7 @@ public class TweetListener implements StatusListener {
     public void onStatus(Status status) {
     	if(status.getLang().equals("en") && counter < 1000) {
     		//this.ti.addTweet(status);
-            this.dbManager.writeTweetToDB(status);
+            this.dbWriter.writeTweetToDB(status);
     		counter++;
     		
     		if((counter % 10) == 0) {
@@ -37,7 +37,7 @@ public class TweetListener implements StatusListener {
     	if(counter == 1000) {
     		System.out.println("closed :)");
             try {
-                this.dbManager.finalize();
+                this.dbWriter.destroy();
             } catch (Throwable throwable) {
                 throwable.printStackTrace();
             }

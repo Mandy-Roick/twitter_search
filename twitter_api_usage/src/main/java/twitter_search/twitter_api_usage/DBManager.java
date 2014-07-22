@@ -20,8 +20,8 @@ import java.sql.*;
 public class DBManager {
     private Connection connection;
 
-    private String password = "9lBZzYDpVDEGjhOPysab";
-    private String user = "roick";
+    private String password = "";
+    private String user = "";
 
     public DBManager() {
         connect();
@@ -33,6 +33,7 @@ public class DBManager {
                             "jdbc:postgresql://isfet.hpi.uni-potsdam.de:5432/max?searchpath=mandy_masterarbeit",
                             this.user, this.password);
         } catch (SQLException e) {
+            System.out.println("Could not connect to PostgreSQL-Database.");
             e.printStackTrace();
         }
     }
@@ -48,26 +49,15 @@ public class DBManager {
         } else {
             createTweet(tweet);
         }
-
-        writeHashtagsToDB(tweet);
-        writeUrlContentToDB(tweet);
+        //writeHashtagsToDB(tweet);
+        //writeUrlContentToDB(tweet);
     }
 
-    private void writeHashtagsToDB(Status tweet) {
-        HashtagEntity[] hashtags = tweet.getHashtagEntities();
-        for (HashtagEntity hashtag : hashtags) {
-            if (!hashtagForTweetDoesExist(tweet.getId(), hashtag.getText())) {
-                createHashtagForTweet(tweet, hashtag);
-            }
-        }
-    }
-
-    private boolean hashtagForTweetDoesExist(long tweetId, String hashtagText) {
+    private boolean tweetDoesExist(long tweetId) {
         boolean doesExist = false;
         try {
             Statement statement = connection.createStatement();
-            ResultSet result = statement.executeQuery("SELECT * FROM mandy_masterarbeit.twitter_tweet_hashtag WHERE (hashtag = '" +
-                    hashtagText + "') AND (tweet = " + tweetId + ")");
+            ResultSet result = statement.executeQuery("SELECT * FROM mandy_masterarbeit.twitter_tweet WHERE id = " + tweetId);
 
             if(result.next()) {
                 doesExist = true;
@@ -81,70 +71,56 @@ public class DBManager {
         return doesExist;
     }
 
-    private void createHashtagForTweet(Status tweet, HashtagEntity hashtag) {
+    private void updateTweet(Status tweet) {
         try {
             PreparedStatement statement = connection.prepareStatement("" +
-                    "INSERT INTO mandy_masterarbeit.twitter_tweet_hashtag(hashtag, tweet)" +
-                    "VALUES (?, ?)");
-            statement.setString(1, hashtag.getText());
-            statement.setLong(2, tweet.getId());
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
+                    "UPDATE mandy_masterarbeit.twitter_tweet" +
+                    "SET content = ?, " +
+                    "user_id = ?, " +
+                    "created_at = ?, " +
+                    "reply_id = ?, " +
+                    "language = ?, " +
+                    "retweeted = ?, " +
+                    "retweeted_id = ?, " +
+                    "truncated = ?, " +
+                    "coordinates_x = ?, coordinates_y = ? " +
+                    "place_id = ?, " +
+                    "WHERE id = ?");
 
-    private void writeUrlContentToDB(Status tweet) {
-        URLEntity[] urls = tweet.getURLEntities();
-        URL url;
-        for (URLEntity urlEntitiy : urls) {
-            if(!urlForTweetDoesExist(tweet.getId(), urlEntitiy.getText())) {
-                createUrlForTweet(tweet, urlEntitiy);
+            statement.setString(1, tweet.getText());
+            statement.setLong(2, tweet.getUser().getId());
+            java.sql.Date sqlDate = new Date(tweet.getCreatedAt().getTime());
+            statement.setDate(3, sqlDate);
+            statement.setLong(4, tweet.getInReplyToStatusId());
+            statement.setString(5, tweet.getLang());
+
+            statement.setBoolean(6, tweet.isRetweet());
+            if (tweet.isRetweet()) {
+                statement.setLong(7, tweet.getRetweetedStatus().getId());
+            } else {
+                statement.setNull(7, Types.BIGINT);
             }
-        }
-    }
-
-    private boolean urlForTweetDoesExist(long tweetId, String url) {
-        boolean doesExist = false;
-        try {
-            Statement statement = this.connection.createStatement();
-            ResultSet result = statement.executeQuery("SELECT * FROM mandy_masterarbeit.twitter_tweet_url WHERE (url = '" +
-                    url + "') AND (tweet = " + tweetId + ")");
-
-            if(result.next()) {
-                doesExist = true;
+            statement.setBoolean(8, tweet.isTruncated());
+            if (tweet.getGeoLocation() != null) {
+                statement.setDouble(9, tweet.getGeoLocation().getLongitude());
+                statement.setDouble(10, tweet.getGeoLocation().getLatitude());
+            } else {
+                statement.setNull(9, Types.DOUBLE);
+                statement.setNull(10, Types.DOUBLE);
             }
 
+            if (tweet.getPlace() == null) {
+                statement.setNull(11, Types.VARCHAR);
+            } else {
+                statement.setString(11, tweet.getPlace().getId());
+            }
+
+
+            statement.setLong(12, tweet.getId());
+
+            statement.execute();
             statement.close();
         } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        return doesExist;
-    }
-
-    private void createUrlForTweet(Status tweet, URLEntity urlEntitiy) {
-        PreparedStatement statement = null;
-        try {
-            URL url = new URL(urlEntitiy.getURL());
-            URLConnection urlConnection = url.openConnection();
-            BufferedReader br = new BufferedReader(new InputStreamReader(urlConnection.getInputStream()));
-            String urlText = "";
-            String inputLine;
-            while ((inputLine = br.readLine()) != null) {
-                urlText += inputLine;
-            }
-            br.close();
-            statement = this.connection.prepareStatement("" +
-                    "INSERT INTO mandy_masterarbeit.twitter_tweet_url(url, content, tweet)" +
-                    "VALUES (?, ?, ?)");
-            statement.setString(1, urlEntitiy.getText());
-            statement.setString(2, urlText);
-            statement.setLong(3, tweet.getId());
-        } catch (SQLException e) {
-            e.printStackTrace();
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
             e.printStackTrace();
         }
     }
@@ -191,65 +167,23 @@ public class DBManager {
         }
     }
 
-    private void updateTweet(Status tweet) {
-        try {
-            PreparedStatement statement = connection.prepareStatement("" +
-                    "UPDATE mandy_masterarbeit.twitter_tweet" +
-                    "SET content = ?, " +
-                    "user_id = ?, " +
-                    "created_at = ?, " +
-                    "reply_id = ?, " +
-                    "language = ?, " +
-                    "retweeted = ?, " +
-                    "retweeted_id = ?, " +
-                    "truncated = ?, " +
-                    "coordinates_x = ?, coordinates_y = ? " +
-                    "place_id = ?, " +
-                    "WHERE id = ?");
+    //---------------------------------    Hashtags    ------------------------------------//
 
-            statement.setString(1, tweet.getText());
-            statement.setLong(2, tweet.getUser().getId());
-            java.sql.Date sqlDate = new Date(tweet.getCreatedAt().getTime());
-            statement.setDate(3, sqlDate);
-            statement.setLong(4, tweet.getInReplyToStatusId());
-            statement.setNString(5, tweet.getLang());
-
-            statement.setBoolean(6, tweet.isRetweet());
-            if (tweet.isRetweet()) {
-                statement.setLong(7, tweet.getRetweetedStatus().getId());
-            } else {
-                statement.setNull(7, Types.BIGINT);
+    public void writeHashtagsToDB(Status tweet) {
+        HashtagEntity[] hashtags = tweet.getHashtagEntities();
+        for (HashtagEntity hashtag : hashtags) {
+            if (!hashtagForTweetDoesExist(tweet.getId(), hashtag.getText())) {
+                createHashtagForTweet(tweet, hashtag);
             }
-            statement.setBoolean(8, tweet.isTruncated());
-            if (tweet.getGeoLocation() != null) {
-                statement.setDouble(9, tweet.getGeoLocation().getLongitude());
-                statement.setDouble(10, tweet.getGeoLocation().getLatitude());
-            } else {
-                statement.setNull(9, Types.DOUBLE);
-                statement.setNull(10, Types.DOUBLE);
-            }
-
-            if (tweet.getPlace() == null) {
-                statement.setNull(11, Types.VARCHAR);
-            } else {
-                statement.setString(11, tweet.getPlace().getId());
-            }
-
-
-            statement.setLong(12, tweet.getId());
-
-            statement.execute();
-            statement.close();
-        } catch (SQLException e) {
-            e.printStackTrace();
         }
     }
 
-    private boolean tweetDoesExist(long tweetId) {
+    private boolean hashtagForTweetDoesExist(long tweetId, String hashtagText) {
         boolean doesExist = false;
         try {
             Statement statement = connection.createStatement();
-            ResultSet result = statement.executeQuery("SELECT * FROM mandy_masterarbeit.twitter_tweet WHERE id = " + tweetId);
+            ResultSet result = statement.executeQuery("SELECT * FROM mandy_masterarbeit.twitter_tweet_hashtag WHERE (hashtag = '" +
+                    hashtagText + "') AND (tweet = " + tweetId + ")");
 
             if(result.next()) {
                 doesExist = true;
@@ -261,5 +195,57 @@ public class DBManager {
         }
 
         return doesExist;
+    }
+
+    private void createHashtagForTweet(Status tweet, HashtagEntity hashtag) {
+        try {
+            PreparedStatement statement = connection.prepareStatement("" +
+                    "INSERT INTO mandy_masterarbeit.twitter_tweet_hashtag(hashtag, tweet)" +
+                    "VALUES (?, ?)");
+            statement.setString(1, hashtag.getText());
+            statement.setLong(2, tweet.getId());
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    //---------------------------------    URLs      ------------------------------------//
+
+    public void writeUrlContentToDB(Status tweet, String url, String urlContent) {
+        if(!urlForTweetDoesExist(tweet.getId(), url)) {
+            createUrlForTweet(tweet, url, urlContent);
+        }
+    }
+
+    private boolean urlForTweetDoesExist(long tweetId, String url) {
+        boolean doesExist = false;
+        try {
+            Statement statement = this.connection.createStatement();
+            ResultSet result = statement.executeQuery("SELECT * FROM mandy_masterarbeit.twitter_tweet_url WHERE (url = '" +
+                    url + "') AND (tweet = " + tweetId + ")");
+
+            if(result.next()) {
+                doesExist = true;
+            }
+
+            statement.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return doesExist;
+    }
+
+    private void createUrlForTweet(Status tweet, String url, String urlContent) {
+        try {
+            PreparedStatement statement = this.connection.prepareStatement("" +
+                    "INSERT INTO mandy_masterarbeit.twitter_tweet_url(url, content, tweet)" +
+                    "VALUES (?, ?, ?)");
+            statement.setString(1, url);
+            statement.setString(2, urlContent);
+            statement.setLong(3, tweet.getId());
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 }
