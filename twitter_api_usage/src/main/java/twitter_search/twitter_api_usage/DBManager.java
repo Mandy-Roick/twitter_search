@@ -65,6 +65,7 @@ public class DBManager {
 
             statement.close();
         } catch (SQLException e) {
+            System.out.println("Could not test whether Tweet exists in DB!");
             e.printStackTrace();
         }
 
@@ -163,6 +164,7 @@ public class DBManager {
             statement.execute();
             statement.close();
         } catch (SQLException e) {
+            System.out.println("Tweet could not be saved to DB for Tweet " + tweet.getText());
             e.printStackTrace();
         }
     }
@@ -191,6 +193,7 @@ public class DBManager {
 
             statement.close();
         } catch (SQLException e) {
+            System.out.println("Could not test whether hashtag and tweet does exist in DB");
             e.printStackTrace();
         }
 
@@ -204,7 +207,10 @@ public class DBManager {
                     "VALUES (?, ?)");
             statement.setString(1, hashtag.getText());
             statement.setLong(2, tweet.getId());
+            statement.execute();
+            statement.close();
         } catch (SQLException e) {
+            System.out.println("Hashtags could not be saved to DB for Hashtag " + hashtag.getText());
             e.printStackTrace();
         }
     }
@@ -230,6 +236,7 @@ public class DBManager {
 
             statement.close();
         } catch (SQLException e) {
+            System.out.println("Could not test whether url and tweet does exist in DB");
             e.printStackTrace();
         }
 
@@ -244,8 +251,12 @@ public class DBManager {
             statement.setString(1, url);
             statement.setString(2, urlContent);
             statement.setLong(3, tweet.getId());
+            statement.execute();
+            statement.close();
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.out.println("UrlContent could not be saved to DB for URL " + url);
+            System.out.println(e.toString());
+            //e.printStackTrace();
         }
     }
 }

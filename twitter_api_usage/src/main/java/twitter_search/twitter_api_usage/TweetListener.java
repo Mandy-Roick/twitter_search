@@ -10,42 +10,34 @@ import twitter4j.StatusListener;
 public class TweetListener implements StatusListener {
 	//private TweetIndexer ti;
     private TweetToDBWriter dbWriter;
-	private int counter;
+	private int counter = 1;
 	
 	public TweetListener() {
         this.dbWriter = new TweetToDBWriter();
-//		try {
-//			String folder = "C:\\Users\\kleiner Klotz\\Documents\\HPI\\4. Semester\\Masterarbeit\\Evaluation\\Corpus\\";
-//			this.ti = new TweetIndexer(folder + "index", folder + "metadata.csv");
-//		} catch (IOException e) {
-//			System.out.println("Index file could not be open.");
-//			e.printStackTrace();
-//		}
 	}
 
     public void onStatus(Status status) {
-    	if(status.getLang().equals("en") && counter < 1000) {
+    	if(status.getLang().equals("en")) {
     		//this.ti.addTweet(status);
             this.dbWriter.writeTweetToDB(status);
-    		counter++;
     		
-    		if((counter % 10) == 0) {
+    		if((counter % 100) == 0) {
         		System.out.println(counter + " Tweet: " + status.getText());
         	}
-    		
-    	}
-    	if(counter == 1000) {
-    		System.out.println("closed :)");
-            try {
-                this.dbWriter.destroy();
-            } catch (Throwable throwable) {
-                throwable.printStackTrace();
+    		counter++;
+
+            if((counter % 1000) == 0) {
+                //System.out.println("10,000 :)");
+                try {
+                    this.dbWriter.collectUrlsAndCloseDB();
+                } catch (Throwable throwable) {
+                    throwable.printStackTrace();
+                }
+                //this.dbWriter = new TweetToDBWriter();
+                //System.exit(1);
+
             }
-            //this.ti.closeWriter();
-            System.exit(1);
-    		//counter++;
     	}
-    	
     }
 
     public void onDeletionNotice(StatusDeletionNotice statusDeletionNotice) {

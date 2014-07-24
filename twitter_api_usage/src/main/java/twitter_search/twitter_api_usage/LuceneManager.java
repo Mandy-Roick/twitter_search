@@ -23,7 +23,7 @@ import org.apache.lucene.util.Version;
 
 public class LuceneManager {
 	
-	public static void main(String[] args) throws IOException, ParseException {
+	public static void test(String[] args) throws IOException, ParseException {
 		StandardAnalyzer analyzer = new StandardAnalyzer(Version.LUCENE_40);
 	
 	    // 1. create the index

@@ -11,7 +11,7 @@ import twitter4j.TwitterFactory;
 
 public class TwitterSearch {
 	
-	public static void main(String[] args) {
+	public static void search(String[] args) {
         if (args.length < 1) {
             System.out.println("java twitter4j.examples.search.SearchTweets [query]");
             System.exit(-1);

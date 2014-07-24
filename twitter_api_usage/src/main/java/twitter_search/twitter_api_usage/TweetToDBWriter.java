@@ -41,32 +41,94 @@ public class TweetToDBWriter {
             final Future<String> urlText = service.submit(new UrlCollector(urlEntity.getURL()));
             urlTexts.put(urlEntity.getURL(), urlText);
         }
-
+        service.shutdown();
         this.urlFutureTextsForTweets.put(tweet, urlTexts);
     }
 
-    public void destroy() {
-        System.out.println("Still " + this.urlFutureTextsForTweets.size() + " Tweets with URLs have to be analyzed.");
-        int counter = 0;
-        for (Map.Entry<Status, Map<String,Future<String>>> urlFutureTextsForTweet : this.urlFutureTextsForTweets.entrySet()) {
-            for (Map.Entry<String, Future<String>> urlEntry : urlFutureTextsForTweet.getValue().entrySet()) {
-                try {
-                    this.dbManager.writeUrlContentToDB(urlFutureTextsForTweet.getKey(), urlEntry.getKey(), urlEntry.getValue().get());
-                } catch (InterruptedException e) {
-                    System.out.println("Url Thread for url " + urlEntry.getKey() + " was interrupted.");
-                    e.printStackTrace();
-                } catch (ExecutionException e) {
-                    System.out.println("Url Thread for url " + urlEntry.getKey() + " could not be executed.");
-                    e.printStackTrace();
-                }
-            }
-        }
+    public void collectUrlsAndCloseDB() {
+        System.out.println("");
+        System.out.println("------------------------------------------------------------");
+        System.out.println(this.urlFutureTextsForTweets.size() + " Tweets with URLs have to be analyzed.");
+
+        Map<Status, Map<String, Future<String>>> unfinishedUrlTextsForTweets = writeUrlsToDBWhichAreDone();
+
+//        for (Map.Entry<Status, Map<String,Future<String>>> urlFutureTextsForTweet : unfinishedUrlTextsForTweets.entrySet()) {
+//            for (Map.Entry<String, Future<String>> urlEntry : urlFutureTextsForTweet.getValue().entrySet()) {
+//                writeURLContentToDB(urlFutureTextsForTweet.getKey(), urlEntry.getKey(), urlEntry.getValue());
+//            }
+//        }
+        //System.out.println("Missing URLs collected, but " + exceptionCounter + " URLs could not be visited.");
         try {
             this.dbManager.finalize();
-            System.out.println("Done :)");
+            System.out.println("DBManager finalized.");
         } catch (Throwable throwable) {
             System.out.println("Could not finalize DBManager.");
             throwable.printStackTrace();
         }
+
+        this.urlFutureTextsForTweets = unfinishedUrlTextsForTweets;
+        this.dbManager = new DBManager();
+        System.out.println("------------------------------------------------------------");
+        System.out.println("------------------------------------------------------------");
     }
+
+    private Map<Status, Map<String, Future<String>>> writeUrlsToDBWhichAreDone() {
+        int exceptionCounter = 0;
+        int doneCounter = 0;
+        Map<Status, Map<String,Future<String>>> unfinishedUrlTextsForTweets = new HashMap<Status, Map<String, Future<String>>>();
+
+        for (Map.Entry<Status, Map<String,Future<String>>> urlFutureTextsForTweet : this.urlFutureTextsForTweets.entrySet()) {
+            for (Map.Entry<String, Future<String>> urlEntry : urlFutureTextsForTweet.getValue().entrySet()) {
+                if (urlEntry.getValue().isDone()) {
+                    boolean noException = this.writeURLContentToDB(urlFutureTextsForTweet.getKey(), urlEntry.getKey(), urlEntry.getValue());
+                    doneCounter++;
+                    if (!noException) exceptionCounter++;
+                } else {
+                    Status currentTweet = urlFutureTextsForTweet.getKey();
+                    if (unfinishedUrlTextsForTweets.containsKey(currentTweet)) {
+                        unfinishedUrlTextsForTweets.get(currentTweet).put(urlEntry.getKey(), urlEntry.getValue());
+                    } else {
+                        Map<String, Future<String>> unfinishedUrlEntryMap = new HashMap<String, Future<String>>();
+                        unfinishedUrlEntryMap.put(urlEntry.getKey(), urlEntry.getValue());
+                        unfinishedUrlTextsForTweets.put(currentTweet, unfinishedUrlEntryMap);
+                    }
+                }
+            }
+        }
+
+        System.out.println(doneCounter + " URLs collected, " + unfinishedUrlTextsForTweets.size() + "URLs still to go.");
+        System.out.println("Missing URLs collected, but " + exceptionCounter + " URLs could not be visited.");
+        return unfinishedUrlTextsForTweets;
+    }
+
+    private boolean writeURLContentToDB(Status tweet, String url, Future<String> urlContent) {
+        boolean noException = true;
+        try {
+            this.dbManager.writeUrlContentToDB(tweet, url, urlContent.get());
+        } catch (InterruptedException e) {
+            noException = false;
+            System.out.println("Url Thread for url " + url + " was interrupted.");
+            System.out.println(e.toString());
+            //e.printStackTrace();
+        } catch (ExecutionException e) {
+            noException = false;
+            System.out.println("Url Thread for url " + url + " could not be executed.");
+            System.out.println(e.toString());
+            //e.printStackTrace();
+        }
+        return noException;
+    }
+
+    protected void finalize() throws Throwable {
+        collectUrlsAndCloseDB();
+
+        for (Map.Entry<Status, Map<String,Future<String>>> urlFutureTextsForTweet : this.urlFutureTextsForTweets.entrySet()) {
+            for (Map.Entry<String, Future<String>> urlEntry : urlFutureTextsForTweet.getValue().entrySet()) {
+                this.writeURLContentToDB(urlFutureTextsForTweet.getKey(), urlEntry.getKey(), urlEntry.getValue());
+            }
+        }
+
+        super.finalize();
+    }
+
 }
