@@ -1,17 +1,8 @@
 package twitter_search.twitter_api_usage;
 
-import org.jsoup.Jsoup;
-import org.jsoup.select.Elements;
 import twitter4j.HashtagEntity;
 import twitter4j.Status;
-import twitter4j.URLEntity;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLConnection;
 import java.sql.*;
 
 /**
@@ -49,8 +40,6 @@ public class DBManager {
         } else {
             createTweet(tweet);
         }
-        //writeHashtagsToDB(tweet);
-        //writeUrlContentToDB(tweet);
     }
 
     private boolean tweetDoesExist(long tweetId) {

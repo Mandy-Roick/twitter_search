@@ -1,12 +1,9 @@
 package twitter_search.twitter_api_usage;
 
-import com.intellij.util.Url;
 import twitter4j.Status;
 import twitter4j.URLEntity;
 
 import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -14,7 +11,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 /**
- * Created by kleiner Klotz on 21.07.2014.
+ * Created by Mandy Roick on 21.07.2014.
  */
 public class TweetToDBWriter {
     DBManager dbManager;

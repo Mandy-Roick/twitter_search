@@ -1,13 +1,8 @@
 package twitter_search.twitter_api_usage;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLConnection;
 import java.util.Arrays;
 
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
@@ -75,21 +70,21 @@ public class TweetIndexer {
 		//System.out.println(urls.length);
         String result = "";
 		org.jsoup.nodes.Document urlDoc;
-		for(int i = 0; i < urls.length; i++) {			
-			try {
-				urlDoc = Jsoup.connect(urls[i].getURL()).get();
-				Elements paragraphs = urlDoc.select("p");//ul?, title, h1
-				Elements titles = urlDoc.select("title");
-				Elements h1 = urlDoc.select("h1");
+        for (URLEntity url : urls) {
+            try {
+                urlDoc = Jsoup.connect(url.getURL()).get();
+                Elements paragraphs = urlDoc.select("p");//ul?, title, h1
+                Elements titles = urlDoc.select("title");
+                Elements h1 = urlDoc.select("h1");
                 result = result + titles + paragraphs + h1;
-				
-				//Elements ul = doc.select("ul");
-				//System.out.println("Paragraphs: " + paragraphs.text());
-				//System.out.println("Title: " + titles.text());
-				//System.out.println("h1: " + h1.text());
-				//System.out.println("ul: " + ul.text());
+
+                //Elements ul = doc.select("ul");
+                //System.out.println("Paragraphs: " + paragraphs.text());
+                //System.out.println("Title: " + titles.text());
+                //System.out.println("h1: " + h1.text());
+                //System.out.println("ul: " + ul.text());
 //				System.out.println(urls[i].getURL());
-				
+
 //				url = new URL(urls[i].getURL());
 //				URLConnection connection = url.openConnection();
 //				BufferedReader br = new BufferedReader(new InputStreamReader(connection.getInputStream()));
@@ -98,11 +93,11 @@ public class TweetIndexer {
 //	                   System.out.println(inputLine);
 //	            }
 //	            br.close();
-			} catch (IOException e) {
-				System.out.println("Could not open Url-connection for " + urls[i].getURL());
-				//e.printStackTrace();
-			}
-		}
+            } catch (IOException e) {
+                System.out.println("Could not open Url-connection for " + url.getURL());
+                //e.printStackTrace();
+            }
+        }
         return result;
 	}
 	private void addTweetToCsv(Status tweet) {

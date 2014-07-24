@@ -3,7 +3,6 @@ package twitter_search.twitter_api_usage;
 import twitter4j.Query;
 import twitter4j.QueryResult;
 import twitter4j.Status;
-import twitter4j.StatusListener;
 import twitter4j.Twitter;
 import twitter4j.TwitterException;
 import twitter4j.TwitterFactory;
