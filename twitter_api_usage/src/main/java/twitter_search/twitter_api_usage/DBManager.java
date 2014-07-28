@@ -4,6 +4,8 @@ import twitter4j.HashtagEntity;
 import twitter4j.Status;
 
 import java.sql.*;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Created by Mandy Roick on 14.07.2014. according to example by Maximilian Jenders
@@ -247,5 +249,28 @@ public class DBManager {
             System.out.println(e.toString());
             //e.printStackTrace();
         }
+    }
+
+    //---------------------------------    SELECT     ------------------------------------//
+
+    public Map<Long,String> selectTweetsCreatedAt(java.sql.Date createdAtDate) {
+        Map<Long, String> tweetIdToContent = new HashMap<Long, String>();
+        try {
+            Statement statement = connection.createStatement();
+            ResultSet result = statement.executeQuery("SELECT id, content FROM mandy_masterarbeit.twitter_tweet " +
+                                                        "WHERE created_at = '2014-07-24'");
+
+            while(result.next()) {
+                long tweetId = result.getLong(1);
+                String tweetContent = result.getString(2);
+                tweetIdToContent.put(tweetId, tweetContent);
+            }
+
+            statement.close();
+        } catch (SQLException e) {
+            System.out.println("Could not select tweets from DB which are created at: " + createdAtDate + "!");
+            e.printStackTrace();
+        }
+        return tweetIdToContent;
     }
 }
