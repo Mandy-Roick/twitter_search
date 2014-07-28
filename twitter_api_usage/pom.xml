@@ -5,7 +5,10 @@
   <groupId>twitter_search</groupId>
   <artifactId>twitter_api_usage</artifactId>
   <version>0.0.1-SNAPSHOT</version>
-  <packaging>jar</packaging>
+    <modules>
+        <module>../topic_modelling</module>
+    </modules>
+    <packaging>pom</packaging>
 
   <name>twitter_api_usage</name>
   <url>http://maven.apache.org</url>
