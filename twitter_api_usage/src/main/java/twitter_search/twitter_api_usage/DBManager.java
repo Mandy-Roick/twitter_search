@@ -75,8 +75,8 @@ public class DBManager {
                     "retweeted = ?, " +
                     "retweeted_id = ?, " +
                     "truncated = ?, " +
-                    "coordinates_x = ?, coordinates_y = ? " +
-                    "place_id = ?, " +
+                    "coordinates_x = ?, coordinates_y = ?, " +
+                    "place_id = ? " +
                     "WHERE id = ?");
 
             statement.setString(1, tweet.getText());
