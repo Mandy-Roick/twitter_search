@@ -3,6 +3,7 @@ package twitter_search.twitter_api_usage;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.twittersearch.app.twitter_api_usage.DBManager;
 
 /**
  * Created by kleiner Klotz on 16.07.2014.

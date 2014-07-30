@@ -2,7 +2,7 @@
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>twitter_search</groupId>
+  <groupId>org.twittersearch.app</groupId>
   <artifactId>twitter_api_usage</artifactId>
   <version>0.0.1-SNAPSHOT</version>
     <packaging>jar</packaging>
@@ -23,7 +23,7 @@
                   <archive>
                       <manifest>
                           <addClasspath>true</addClasspath>
-                          <mainClass>twitter_search.twitter_api_usage.TwitterManager</mainClass>
+                          <mainClass>org.twittersearch.app.twitter_api_usage.TwitterManager</mainClass>
                       </manifest>
                   </archive>
               </configuration>

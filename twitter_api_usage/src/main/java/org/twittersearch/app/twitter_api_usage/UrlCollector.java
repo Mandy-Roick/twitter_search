@@ -1,4 +1,4 @@
-package twitter_search.twitter_api_usage;
+package org.twittersearch.app.twitter_api_usage;
 
 import java.io.BufferedReader;
 import java.io.IOException;

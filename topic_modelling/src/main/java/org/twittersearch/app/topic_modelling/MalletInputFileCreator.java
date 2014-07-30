@@ -1,4 +1,4 @@
-package twitter_search.topic_modelling;
+package org.twittersearch.app.topic_modelling;
 
 import au.com.bytecode.opencsv.CSVWriter;
 import twitter_search.twitter_api_usage.DBManager;

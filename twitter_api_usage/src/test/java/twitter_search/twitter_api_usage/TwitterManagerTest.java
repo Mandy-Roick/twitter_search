@@ -4,6 +4,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import org.twittersearch.app.twitter_api_usage.TwitterManager;
 import twitter4j.TwitterException;
 
 public class TwitterManagerTest {

@@ -5,6 +5,7 @@ import java.util.List;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.twittersearch.app.twitter_api_usage.WordNetManager;
 
 public class WordNetManagerTest {
 

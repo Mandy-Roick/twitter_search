@@ -1,5 +1,7 @@
-package twitter_search.twitter_api_usage;
+package org.twittersearch.app.twitter_api_usage;
 
+import org.twittersearch.app.twitter_api_usage.TweetIndexer;
+import org.twittersearch.app.twitter_api_usage.TweetListener;
 import twitter4j.Query;
 import twitter4j.QueryResult;
 import twitter4j.Status;
