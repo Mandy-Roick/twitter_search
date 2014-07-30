@@ -55,8 +55,17 @@ public class TwitterManager
     	  .setOAuthAccessToken("2446857775-Ttl3gXob0CVO6Z0O7kHT5nM02DqG0krvzNJlyjZ")
     	  .setOAuthAccessTokenSecret("oEhkZmQ65NFHmPbMZwgZfYJTpuqQ2V1XX1yJt6Tge28nF");
         TwitterStream twitterStream = new TwitterStreamFactory(cb.build()).getInstance();
-        
-        TweetListener listener = new TweetListener();
+
+        int numberOfThreads = 20;
+        if (args.length == 1) {
+            try{
+                numberOfThreads = Integer.parseInt(args[0]);
+            } catch (NumberFormatException e) {
+                System.out.println("The given argument has to be a number (the number of threads)!");
+            }
+        }
+
+        TweetListener listener = new TweetListener(numberOfThreads);
         twitterStream.addListener(listener);
         twitterStream.sample();
         //listener.search("office");

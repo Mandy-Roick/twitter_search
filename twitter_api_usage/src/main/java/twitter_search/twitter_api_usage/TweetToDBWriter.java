@@ -5,21 +5,29 @@ import twitter4j.URLEntity;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 
 /**
  * Created by Mandy Roick on 21.07.2014.
  */
 public class TweetToDBWriter {
     DBManager dbManager;
+    ExecutorService executorService;
     Map<Status, Map<String, Future<String>>> urlFutureTextsForTweets; // {tweet : {url1 : urlContent1, url2 : urlContent2,...},...}
+    Map<Status, Map<String, Future<String>>> unfinishedUrlFutureTexts;
 
     TweetToDBWriter() {
         this.dbManager = new DBManager();
         this.urlFutureTextsForTweets = new HashMap<Status, Map<String,Future<String>>>();
+        this.unfinishedUrlFutureTexts = new HashMap<Status, Map<String,Future<String>>>();
+        this.executorService = Executors.newFixedThreadPool(20);
+    }
+
+    TweetToDBWriter(int numberOfThreads) {
+        this.dbManager = new DBManager();
+        this.urlFutureTextsForTweets = new HashMap<Status, Map<String,Future<String>>>();
+        this.unfinishedUrlFutureTexts = new HashMap<Status, Map<String,Future<String>>>();
+        this.executorService = Executors.newFixedThreadPool(numberOfThreads);
     }
 
     public void writeTweetToDB (Status tweet) {
@@ -32,29 +40,27 @@ public class TweetToDBWriter {
     public void writeUrlsToDB (Status tweet) {
         URLEntity[] urlEntities = tweet.getURLEntities();
         if (urlEntities.length == 0) return;
-        final ExecutorService service = Executors.newFixedThreadPool(urlEntities.length);
+
         Map<String, Future<String>> urlTexts = new HashMap<String, Future<String>>();
         for(URLEntity urlEntity : urlEntities) {
-            final Future<String> urlText = service.submit(new UrlCollector(urlEntity.getURL()));
+            final Future<String> urlText = this.executorService.submit(new UrlCollector(urlEntity.getURL()));
             urlTexts.put(urlEntity.getURL(), urlText);
         }
-        service.shutdown();
         this.urlFutureTextsForTweets.put(tweet, urlTexts);
     }
 
     public void collectUrlsAndCloseDB() {
         System.out.println("");
-        System.out.println("------------------------------------------------------------");
+        System.out.println("---------------------------  collect and cancel unfinished URLs  ---------------------------------");
+
+        System.out.println(this.unfinishedUrlFutureTexts.size() + " Tweets with URLs have to be analyzed from last round.");
+        Map<Status, Map<String, Future<String>>> unfinishedUrlTextsForTweets = writeUrlsToDBWhichAreDone(this.unfinishedUrlFutureTexts);
+        cancelUnfinishedUrlTexts(this.unfinishedUrlFutureTexts);
+
+        System.out.println("---------------------------  collect URLs  ---------------------------------");
         System.out.println(this.urlFutureTextsForTweets.size() + " Tweets with URLs have to be analyzed.");
+        this.unfinishedUrlFutureTexts = writeUrlsToDBWhichAreDone(this.urlFutureTextsForTweets);
 
-        Map<Status, Map<String, Future<String>>> unfinishedUrlTextsForTweets = writeUrlsToDBWhichAreDone();
-
-//        for (Map.Entry<Status, Map<String,Future<String>>> urlFutureTextsForTweet : unfinishedUrlTextsForTweets.entrySet()) {
-//            for (Map.Entry<String, Future<String>> urlEntry : urlFutureTextsForTweet.getValue().entrySet()) {
-//                writeURLContentToDB(urlFutureTextsForTweet.getKey(), urlEntry.getKey(), urlEntry.getValue());
-//            }
-//        }
-        //System.out.println("Missing URLs collected, but " + exceptionCounter + " URLs could not be visited.");
         try {
             this.dbManager.finalize();
             System.out.println("DBManager finalized.");
@@ -63,18 +69,26 @@ public class TweetToDBWriter {
             throwable.printStackTrace();
         }
 
-        this.urlFutureTextsForTweets = unfinishedUrlTextsForTweets;
+        this.urlFutureTextsForTweets.clear();
         this.dbManager = new DBManager();
         System.out.println("------------------------------------------------------------");
         System.out.println("------------------------------------------------------------");
     }
 
-    private Map<Status, Map<String, Future<String>>> writeUrlsToDBWhichAreDone() {
+    private void cancelUnfinishedUrlTexts(Map<Status, Map<String, Future<String>>> unfinishedUrlFutureTexts) {
+        for (Map.Entry<Status, Map<String,Future<String>>> urlFutureTextsForTweet : unfinishedUrlFutureTexts.entrySet()) {
+            for (Map.Entry<String, Future<String>> urlEntry : urlFutureTextsForTweet.getValue().entrySet()) {
+                urlEntry.getValue().cancel(true);
+            }
+        }
+    }
+
+    private Map<Status, Map<String, Future<String>>> writeUrlsToDBWhichAreDone(Map<Status, Map<String,Future<String>>> currentUrlTextsForTweets) {
         int exceptionCounter = 0;
         int doneCounter = 0;
         Map<Status, Map<String,Future<String>>> unfinishedUrlTextsForTweets = new HashMap<Status, Map<String, Future<String>>>();
 
-        for (Map.Entry<Status, Map<String,Future<String>>> urlFutureTextsForTweet : this.urlFutureTextsForTweets.entrySet()) {
+        for (Map.Entry<Status, Map<String,Future<String>>> urlFutureTextsForTweet : currentUrlTextsForTweets.entrySet()) {
             for (Map.Entry<String, Future<String>> urlEntry : urlFutureTextsForTweet.getValue().entrySet()) {
                 if (urlEntry.getValue().isDone()) {
                     boolean noException = this.writeURLContentToDB(urlFutureTextsForTweet.getKey(), urlEntry.getKey(), urlEntry.getValue());
@@ -118,14 +132,18 @@ public class TweetToDBWriter {
 
     protected void finalize() throws Throwable {
         collectUrlsAndCloseDB();
+        waitForUrlsWhichAreNotDone();
 
+        this.executorService.shutdown();
+        super.finalize();
+    }
+
+    private void waitForUrlsWhichAreNotDone() {
         for (Map.Entry<Status, Map<String,Future<String>>> urlFutureTextsForTweet : this.urlFutureTextsForTweets.entrySet()) {
             for (Map.Entry<String, Future<String>> urlEntry : urlFutureTextsForTweet.getValue().entrySet()) {
                 this.writeURLContentToDB(urlFutureTextsForTweet.getKey(), urlEntry.getKey(), urlEntry.getValue());
             }
         }
-
-        super.finalize();
     }
 
 }

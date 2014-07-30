@@ -10,9 +10,11 @@ public class TweetListener implements StatusListener {
     private TweetToDBWriter dbWriter;
 	private int counter = 1;
 	
-	public TweetListener() {
-        this.dbWriter = new TweetToDBWriter();
-	}
+	public TweetListener() { this.dbWriter = new TweetToDBWriter();	}
+
+    public TweetListener(int numberOfThreads) {
+        this.dbWriter = new TweetToDBWriter(numberOfThreads);
+    }
 
     public void onStatus(Status status) {
     	if(status.getLang().equals("en")) {
