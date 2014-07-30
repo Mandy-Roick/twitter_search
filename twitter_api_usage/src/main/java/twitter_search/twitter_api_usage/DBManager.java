@@ -66,7 +66,7 @@ public class DBManager {
     private void updateTweet(Status tweet) {
         try {
             PreparedStatement statement = connection.prepareStatement("" +
-                    "UPDATE mandy_masterarbeit.twitter_tweet" +
+                    "UPDATE mandy_masterarbeit.twitter_tweet " +
                     "SET content = ?, " +
                     "user_id = ?, " +
                     "created_at = ?, " +
