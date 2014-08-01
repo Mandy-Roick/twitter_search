@@ -26,10 +26,20 @@ public class TweetListener implements StatusListener {
         	}
     		counter++;
 
-            if((counter % 1000) == 0) {
+            if((counter % 10000) == 0) {
                 //System.out.println("10,000 :)");
                 try {
                     this.dbWriter.collectUrlsAndCloseDB();
+                } catch (Throwable throwable) {
+                    throwable.printStackTrace();
+                }
+                //this.dbWriter = new TweetToDBWriter();
+                //System.exit(1);
+
+            } else if((counter % 1000) == 0) {
+                //System.out.println("10,000 :)");
+                try {
+                    this.dbWriter.collectUrls();
                 } catch (Throwable throwable) {
                     throwable.printStackTrace();
                 }

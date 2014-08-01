@@ -49,12 +49,24 @@ public class TweetToDBWriter {
         this.urlFutureTextsForTweets.put(tweet, urlTexts);
     }
 
+    public void collectUrls() {
+        System.out.println("");
+
+        System.out.println("---------------------------  collect URLs  ---------------------------------");
+        System.out.println(this.urlFutureTextsForTweets.size() + " Tweets with URLs have to be analyzed.");
+        Map<Status, Map<String, Future<String>>> currentlyUnfinishedUrlFutureTexts = writeUrlsToDBWhichAreDone(this.urlFutureTextsForTweets);
+        this.urlFutureTextsForTweets = currentlyUnfinishedUrlFutureTexts;
+
+        System.out.println("------------------------------------------------------------");
+        System.out.println("------------------------------------------------------------");
+    }
+
     public void collectUrlsAndCloseDB() {
         System.out.println("");
         System.out.println("---------------------------  collect and cancel unfinished URLs  ---------------------------------");
 
         System.out.println(this.unfinishedUrlFutureTexts.size() + " Tweets with URLs have to be analyzed from last round.");
-        Map<Status, Map<String, Future<String>>> unfinishedUrlTextsForTweets = writeUrlsToDBWhichAreDone(this.unfinishedUrlFutureTexts);
+        writeUrlsToDBWhichAreDone(this.unfinishedUrlFutureTexts);
         cancelUnfinishedUrlTexts(this.unfinishedUrlFutureTexts);
 
         System.out.println("---------------------------  collect URLs  ---------------------------------");
