@@ -1,12 +1,11 @@
 package org.twittersearch.app.topic_modelling;
 
 import au.com.bytecode.opencsv.CSVWriter;
-import twitter_search.twitter_api_usage.DBManager;
+import org.twittersearch.app.twitter_api_usage.DBManager;
 
 import java.io.FileWriter;
 import java.io.IOException;
 import java.sql.Date;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -15,13 +14,13 @@ import java.util.Map;
 public class MalletInputFileCreator {
 
     public static void main(String[] args) {
-        writeDBContentToInputFile("mallet_input_file.csv");
+        writeDBContentToInputFile("mallet_input_file_2014-07-30.csv");
     }
 
     private static void writeDBContentToInputFile(String filePath) {
         DBManager dbManager = new DBManager();
-        Date sqlDate = new Date(1406174400000L); // 07/24/2014
-        Map<Long, String> tweetIdsToContent = dbManager.selectTweetsCreatedAt(sqlDate);
+        String date = "2014-07-23";
+        Map<Long, String> tweetIdsToContent = dbManager.selectTweetsCreatedAt(date);
 
         try {
             CSVWriter csvWriter = new CSVWriter(new FileWriter(filePath), '\t', '\"');
@@ -32,6 +31,7 @@ public class MalletInputFileCreator {
                 line[2] = normalizeTweetContent(entry.getValue());
                 csvWriter.writeNext(line);
             }
+            csvWriter.close();
         } catch (IOException e) {
             System.out.print("InputFile for Topic Modelling could not be created.");
             e.printStackTrace();
@@ -42,6 +42,11 @@ public class MalletInputFileCreator {
         String normalizedTweet = tweetContent.replace('\n',' ');
         normalizedTweet = normalizedTweet.replace('\r',' ');
         normalizedTweet = normalizedTweet.replace('\"','\'');
+
+        normalizedTweet = normalizedTweet.replaceAll("@(\\w+)[\\s:\\p{Po}]"," ");
+        normalizedTweet = normalizedTweet.replaceAll("@(\\w+)$","");
+        normalizedTweet = normalizedTweet.replaceAll("(\\w+)://(\\S+)\\s"," ");
+        normalizedTweet = normalizedTweet.replaceAll("(\\w+)://(\\S+)$"," ");
         return normalizedTweet;
     }
 }

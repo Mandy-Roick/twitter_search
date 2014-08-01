@@ -272,12 +272,12 @@ public class DBManager {
 
     //---------------------------------    SELECT     ------------------------------------//
 
-    public Map<Long,String> selectTweetsCreatedAt(java.sql.Date createdAtDate) {
+    public Map<Long,String> selectTweetsCreatedAt(String date) {
         Map<Long, String> tweetIdToContent = new HashMap<Long, String>();
         try {
             Statement statement = connection.createStatement();
             ResultSet result = statement.executeQuery("SELECT id, content FROM mandy_masterarbeit.twitter_tweet " +
-                                                        "WHERE created_at = '2014-07-24'");
+                                                        "WHERE created_at = '" + date + "'");
 
             while(result.next()) {
                 long tweetId = result.getLong(1);
@@ -287,7 +287,7 @@ public class DBManager {
 
             statement.close();
         } catch (SQLException e) {
-            System.out.println("Could not select tweets from DB which are created at: " + createdAtDate + "!");
+            System.out.println("Could not select tweets from DB which are created at: " + date + "!");
             e.printStackTrace();
         }
         return tweetIdToContent;
