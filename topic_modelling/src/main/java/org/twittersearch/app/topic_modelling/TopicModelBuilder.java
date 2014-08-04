@@ -82,6 +82,7 @@ public class TopicModelBuilder {
 
         TokenSequenceRemoveStopwords stopWordsPipe = new TokenSequenceRemoveStopwords(new File("stop_lists/stop_words_mysql.txt"), "UTF-8", false, false, false);
         pipeList.add(stopWordsPipe);
+        pipeList.add(new StemmerPipe());
         pipeList.add(new TokenSequence2FeatureSequence());
 
         InstanceList initialInstances = new InstanceList (new SerialPipes(pipeList));
