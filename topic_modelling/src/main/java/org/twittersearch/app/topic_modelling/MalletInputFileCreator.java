@@ -7,6 +7,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.sql.Date;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Created by kleiner Klotz on 28.07.2014.
@@ -14,7 +16,7 @@ import java.util.Map;
 public class MalletInputFileCreator {
 
     public static void main(String[] args) {
-        writeDBContentToInputFile("mallet_input_file_2014-07-30.csv");
+        writeDBContentToInputFile("mallet_input_file_2014-07-23.csv");
     }
 
     private static void writeDBContentToInputFile(String filePath) {
@@ -43,6 +45,13 @@ public class MalletInputFileCreator {
         normalizedTweet = normalizedTweet.replace('\r',' ');
         normalizedTweet = normalizedTweet.replace('\"','\'');
 
+        Pattern unicode = Pattern.compile("[^\\x00-\\x7F]",
+                Pattern.UNICODE_CASE | Pattern.CANON_EQ
+                        | Pattern.CASE_INSENSITIVE);
+        Matcher matcher = unicode.matcher(normalizedTweet);
+        normalizedTweet = matcher.replaceAll(" ");
+
+        normalizedTweet = normalizedTweet.replaceAll("\\p{C}", "");
         normalizedTweet = normalizedTweet.replaceAll("@(\\w+)[\\s:\\p{Po}]"," ");
         normalizedTweet = normalizedTweet.replaceAll("@(\\w+)$","");
         normalizedTweet = normalizedTweet.replaceAll("(\\w+)://(\\S+)\\s"," ");
