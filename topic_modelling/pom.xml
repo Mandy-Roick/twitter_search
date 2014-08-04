@@ -25,6 +25,7 @@
             <artifactId>twitter_api_usage</artifactId>
             <version>0.0.1-SNAPSHOT</version>
         </dependency>
+        
     </dependencies>
 
 </project>
