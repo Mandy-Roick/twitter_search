@@ -24,6 +24,8 @@ import twitter4j.Status;
 import java.io.IOException;
 import java.sql.*;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -293,58 +295,23 @@ public class DBManager {
         return tweetIdToContent;
     }
 
-    public static class LuceneManager {
+    public String[] selectHashtagsForTweet(Long tweetId) {
+        List<String> hashtags = new LinkedList<String>();
+        try {
+            Statement statement = connection.createStatement();
+            ResultSet result = statement.executeQuery("SELECT hashtag FROM mandy_masterarbeit.twitter_tweet_hashtag " +
+                    "WHERE tweet = '" + tweetId + "'");
 
-        public static void test(String[] args) throws IOException, ParseException {
-            StandardAnalyzer analyzer = new StandardAnalyzer(Version.LUCENE_40);
-
-            // 1. create the index
-            Directory index = new RAMDirectory();
-
-            IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_40, analyzer);
-
-            IndexWriter w = new IndexWriter(index, config);
-            addDoc(w, "Lucene in Action", "193398817");
-            addDoc(w, "Lucene for Dummies", "55320055Z");
-            addDoc(w, "Managing Gigabytes", "55063554A");
-            addDoc(w, "The Art of Computer Science", "9900333X");
-            w.close();
-
-            // 2. query
-            String querystr = args.length > 0 ? args[0] : "dummie";
-
-            // the "title" arg specifies the default field to use
-            // when no field is explicitly specified in the query.
-            Query q = new QueryParser(Version.LUCENE_40, "title", analyzer).parse(querystr);
-
-            // 3. search
-            int hitsPerPage = 10;
-            IndexReader reader = DirectoryReader.open(index);
-            IndexSearcher searcher = new IndexSearcher(reader);
-            TopScoreDocCollector collector = TopScoreDocCollector.create(hitsPerPage, true);
-            searcher.search(q, collector);
-            ScoreDoc[] hits = collector.topDocs().scoreDocs;
-
-            // 4. display results
-            System.out.println("Found " + hits.length + " hits.");
-            for(int i=0;i<hits.length;++i) {
-              int docId = hits[i].doc;
-              Document d = searcher.doc(docId);
-              System.out.println((i + 1) + ". " + d.get("isbn") + "\t" + d.get("title"));
+            while(result.next()) {
+                hashtags.add(result.getString(1));
             }
 
-            // reader can only be closed when there
-            // is no need to access the documents any more.
-            reader.close();
+            statement.close();
+        } catch (SQLException e) {
+            System.out.println("Could not select hashtags from DB for tweet: " + tweetId + "!");
+            e.printStackTrace();
         }
-
-      private static void addDoc(IndexWriter w, String title, String isbn) throws IOException {
-        Document doc = new Document();
-        doc.add(new TextField("title", title, Field.Store.YES));
-
-        // use a string field for isbn because we don't want it tokenized
-        doc.add(new StringField("isbn", isbn, Field.Store.YES));
-        w.addDocument(doc);
-      }
+        return hashtags.toArray(new String[hashtags.size()]);
     }
+
 }

@@ -1,11 +1,13 @@
 package org.twittersearch.app.topic_modelling;
 
 import au.com.bytecode.opencsv.CSVWriter;
+import com.sun.deploy.util.StringUtils;
 import org.twittersearch.app.twitter_api_usage.DBManager;
 
 import java.io.FileWriter;
 import java.io.IOException;
 import java.sql.Date;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -15,14 +17,22 @@ import java.util.regex.Pattern;
  */
 public class MalletInputFileCreator {
 
+    DBManager dbManager;
+    Map<String, String[]> splitHashtags;
+
     public static void main(String[] args) {
-        writeDBContentToInputFile("mallet_input_file_2014-07-23.csv");
+        MalletInputFileCreator malletInputFileCreator = new MalletInputFileCreator();
+        malletInputFileCreator.writeDBContentToInputFile("mallet_input_file_2014-07-23.csv");
     }
 
-    private static void writeDBContentToInputFile(String filePath) {
-        DBManager dbManager = new DBManager();
+    public MalletInputFileCreator() {
+        dbManager = new DBManager();
+        splitHashtags = new HashMap<String, String[]>();
+    }
+
+    private void writeDBContentToInputFile(String filePath) {
         String date = "2014-07-23";
-        Map<Long, String> tweetIdsToContent = dbManager.selectTweetsCreatedAt(date);
+        Map<Long, String> tweetIdsToContent = this.dbManager.selectTweetsCreatedAt(date);
 
         try {
             CSVWriter csvWriter = new CSVWriter(new FileWriter(filePath), '\t', '\"');
@@ -30,7 +40,7 @@ public class MalletInputFileCreator {
             for (Map.Entry<Long, String> entry : tweetIdsToContent.entrySet()) {
                 line[0] = entry.getKey().toString();
                 line[1] = "X";
-                line[2] = normalizeTweetContent(entry.getValue());
+                line[2] = preprocessTweetContent(entry.getKey(), entry.getValue());
                 csvWriter.writeNext(line);
             }
             csvWriter.close();
@@ -40,7 +50,47 @@ public class MalletInputFileCreator {
         }
     }
 
-    private static String normalizeTweetContent(String tweetContent) {
+    private String preprocessTweetContent(Long tweetId, String tweetContent) {
+        String preprocessedTweetContent = normalizeTweetContent(tweetContent);
+        //System.out.println("Tweet: " + preprocessedTweetContent);
+        preprocessedTweetContent += splitHashtags(tweetId);
+        //System.out.println("Hashtag Tweet: " + preprocessedTweetContent);
+        return preprocessedTweetContent;
+    }
+
+    private String splitHashtags(Long tweetId) {
+        String concatenatedCamelCaseHashtags = "";
+        String[] hashtags = this.dbManager.selectHashtagsForTweet(tweetId);
+
+        String[] camelCaseWords;
+        String[] splitHashtag;
+        String hashtagLowerCase;
+        for (String hashtag : hashtags) {
+            hashtagLowerCase = hashtag.toLowerCase();
+            splitHashtag = splitHashtags.get(hashtagLowerCase);
+            //TODO: add split hashtags to the splitHashtag Map, but only if they are good.
+
+            //TODO: Find out what this regex does.
+            camelCaseWords = hashtag.split("(?<!(^|\\p{Lu}))(?=\\p{Lu})|(?<!^)(?=\\p{Lu}\\p{Ll})"); // "(?<!^)(?=\\p{Lu})");
+            if (splitHashtag == null) {
+                splitHashtags.put(hashtagLowerCase, camelCaseWords);
+            } else {
+                if (camelCaseWords.length > splitHashtag.length) {
+                    splitHashtags.put(hashtagLowerCase, camelCaseWords);
+                } else {
+                    camelCaseWords = splitHashtag;
+                }
+            }
+
+            for (String camelCaseWord : camelCaseWords) {
+                concatenatedCamelCaseHashtags += " " + camelCaseWord;
+            }
+        }
+        System.out.println("Hashtags: " + concatenatedCamelCaseHashtags);
+        return concatenatedCamelCaseHashtags;
+    }
+
+    private String normalizeTweetContent(String tweetContent) {
         String normalizedTweet = tweetContent.replace('\n',' ');
         normalizedTweet = normalizedTweet.replace('\r',' ');
         normalizedTweet = normalizedTweet.replace('\"','\'');
@@ -56,6 +106,8 @@ public class MalletInputFileCreator {
         normalizedTweet = normalizedTweet.replaceAll("@(\\w+)$","");
         normalizedTweet = normalizedTweet.replaceAll("(\\w+)://(\\S+)\\s"," ");
         normalizedTweet = normalizedTweet.replaceAll("(\\w+)://(\\S+)$"," ");
+
         return normalizedTweet;
     }
+
 }
