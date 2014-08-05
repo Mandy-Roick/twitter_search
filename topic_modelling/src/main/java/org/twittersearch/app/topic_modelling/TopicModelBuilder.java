@@ -73,30 +73,44 @@ public class TopicModelBuilder {
     }
 
     private static InstanceList createInstanceList(String inputFileName) throws IOException {
-        ArrayList<Pipe> pipeList = new ArrayList<Pipe>();
+        //TODO: write less duplicated code!
+        // ideas:   - use prune method from FeatureSequence (but needs the creation of a new Alphabet)
+        //          - write my own pipe which is able to do this (probably use two pipes -> one to extract frequencies, one to delete less frequent words)
+        // Create an initial instanceList which can be used to extract the frequencies of words.
+        ArrayList<Pipe> standardPipeList = new ArrayList<Pipe>();
 
         // Pipes: lowercase, tokenize, remove stopwords, map to features
-        pipeList.add(new CharSequenceLowercase());
-        //This pattern filters all sequences of at least 3 literals (also in urls, in users, ...)
-        pipeList.add(new CharSequence2TokenSequence(Pattern.compile("[\\p{L}][\\p{L}\\p{Pd}\\p{M}']+\\p{L}")));
+        standardPipeList.add(new CharSequenceLowercase());
+        //This pattern filters all sequences of at least 3 literals
+        standardPipeList.add(new CharSequence2TokenSequence(Pattern.compile("[\\p{L}][\\p{L}\\p{Pd}\\p{M}']+\\p{L}")));
 
         TokenSequenceRemoveStopwords stopWordsPipe = new TokenSequenceRemoveStopwords(new File("stop_lists/stop_words_mysql.txt"), "UTF-8", false, false, false);
-        pipeList.add(stopWordsPipe);
-        pipeList.add(new StemmerPipe());
-        pipeList.add(new TokenSequence2FeatureSequence());
+        standardPipeList.add(stopWordsPipe);
+        standardPipeList.add(new StemmerPipe());
+        standardPipeList.add(new TokenSequence2FeatureSequence());
 
-        InstanceList initialInstances = new InstanceList (new SerialPipes(pipeList));
+        InstanceList initialInstances = new InstanceList (new SerialPipes(standardPipeList));
 
         Reader fileReader = new InputStreamReader(new FileInputStream(new File(inputFileName)), "UTF-8");
         initialInstances.addThruPipe(new CsvIterator(fileReader, Pattern.compile("^(\\S*)[\\s,]*(\\S*)[\\s,]*(.*)$"),
                 3, 2, 1)); // data, label, name fields
         fileReader.close();
 
+
+        // Create the final instanceList which contains no words which are in less than 10 tweets.
+        ArrayList<Pipe> prunedPipeList = new ArrayList<Pipe>();
+        prunedPipeList.add(new CharSequenceLowercase());
+        prunedPipeList.add(new CharSequence2TokenSequence(Pattern.compile("[\\p{L}][\\p{L}\\p{Pd}\\p{M}']+\\p{L}")));
+
         Map<String, Integer> wordFrequencies = getWordFrequencies(initialInstances);
         List<String> cutOffWords = getCutOffWords(wordFrequencies, 10);
         stopWordsPipe.addStopWords(cutOffWords.toArray(new String[cutOffWords.size()]));
+        prunedPipeList.add(stopWordsPipe);
 
-        InstanceList prunedInstances = new InstanceList (new SerialPipes(pipeList));
+        prunedPipeList.add(new StemmerPipe());
+        prunedPipeList.add(new TokenSequence2FeatureSequence());
+
+        InstanceList prunedInstances = new InstanceList (new SerialPipes(prunedPipeList));
         fileReader = new InputStreamReader(new FileInputStream(new File(inputFileName)), "UTF-8");
         prunedInstances.addThruPipe(new CsvIterator(fileReader, Pattern.compile("^(\\S*)[\\s,]*(\\S*)[\\s,]*(.*)$"),
                 3, 2, 1)); // data, label, name fields
