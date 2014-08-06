@@ -314,4 +314,28 @@ public class DBManager {
         return hashtags.toArray(new String[hashtags.size()]);
     }
 
+    public Map<Long, List<String>> selectTweetsAndHashtags() {
+        Map<Long, List<String>> tweetsHashtags = new HashMap<Long, List<String>>();
+        try {
+            Statement statement = connection.createStatement();
+            ResultSet result = statement.executeQuery("SELECT tweet,hashtag FROM mandy_masterarbeit.twitter_tweet_hashtag ");
+
+            while(result.next()) {
+                Long tweetId = result.getLong(1);
+                List<String> hashtags = tweetsHashtags.get(tweetId);
+                if(hashtags == null) {
+                    hashtags = new LinkedList<String>();
+                }
+                hashtags.add(result.getString(2));
+                tweetsHashtags.put(tweetId, hashtags);
+            }
+
+            statement.close();
+        } catch (SQLException e) {
+            System.out.println("Could not select hashtags and tweets from DB for tweet!");
+            e.printStackTrace();
+        }
+        return tweetsHashtags;
+    }
+
 }

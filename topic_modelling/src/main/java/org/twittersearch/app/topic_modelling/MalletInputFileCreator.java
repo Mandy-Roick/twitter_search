@@ -1,24 +1,26 @@
 package org.twittersearch.app.topic_modelling;
 
 import au.com.bytecode.opencsv.CSVWriter;
-import com.sun.deploy.util.StringUtils;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import org.apache.commons.lang.StringUtils;
 import org.twittersearch.app.twitter_api_usage.DBManager;
 
 import java.io.FileWriter;
 import java.io.IOException;
-import java.sql.Date;
-import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Created by kleiner Klotz on 28.07.2014.
+ * Created by Mandy Roick on 28.07.2014.
  */
 public class MalletInputFileCreator {
 
     DBManager dbManager;
-    Map<String, String[]> splitHashtags;
+    Object2ObjectMap<String, String[]> splitHashtags;
+    Map<Long, List<String>> tweetsHashtags;
 
     public static void main(String[] args) {
         MalletInputFileCreator malletInputFileCreator = new MalletInputFileCreator();
@@ -27,17 +29,23 @@ public class MalletInputFileCreator {
 
     public MalletInputFileCreator() {
         dbManager = new DBManager();
-        splitHashtags = new HashMap<String, String[]>();
+        splitHashtags = new Object2ObjectOpenHashMap<String, String[]>();
     }
 
     private void writeDBContentToInputFile(String filePath) {
         String date = "2014-07-23";
         Map<Long, String> tweetIdsToContent = this.dbManager.selectTweetsCreatedAt(date);
+        tweetsHashtags = dbManager.selectTweetsAndHashtags();
 
         try {
             CSVWriter csvWriter = new CSVWriter(new FileWriter(filePath), '\t', '\"');
             String[] line = new String[3];
+            int counter = 1;
             for (Map.Entry<Long, String> entry : tweetIdsToContent.entrySet()) {
+                if (counter % 1000 == 0) {
+                    System.out.println(counter);
+                }
+                counter++;
                 line[0] = entry.getKey().toString();
                 line[1] = "X";
                 line[2] = preprocessTweetContent(entry.getKey(), entry.getValue());
@@ -60,33 +68,29 @@ public class MalletInputFileCreator {
 
     private String splitHashtags(Long tweetId) {
         String concatenatedCamelCaseHashtags = "";
-        String[] hashtags = this.dbManager.selectHashtagsForTweet(tweetId);
+        List<String> hashtagsForTweet = tweetsHashtags.get(tweetId);
+        if(hashtagsForTweet == null) {
+            return concatenatedCamelCaseHashtags;
+        }
 
-        String[] camelCaseWords;
-        String[] splitHashtag;
+        String[] currentSplitHashtag;
+        String[] splitHashtagFromMap;
         String hashtagLowerCase;
-        for (String hashtag : hashtags) {
+        for (String hashtag : hashtagsForTweet) {
+            currentSplitHashtag = StringUtils.splitByCharacterTypeCamelCase(hashtag);
             hashtagLowerCase = hashtag.toLowerCase();
-            splitHashtag = splitHashtags.get(hashtagLowerCase);
-            //TODO: add split hashtags to the splitHashtag Map, but only if they are good.
+            splitHashtagFromMap = this.splitHashtags.get(hashtagLowerCase);
 
-            //TODO: Find out what this regex does.
-            camelCaseWords = hashtag.split("(?<!(^|\\p{Lu}))(?=\\p{Lu})|(?<!^)(?=\\p{Lu}\\p{Ll})"); // "(?<!^)(?=\\p{Lu})");
-            if (splitHashtag == null) {
-                splitHashtags.put(hashtagLowerCase, camelCaseWords);
+            if ((splitHashtagFromMap != null) && (splitHashtagFromMap.length > currentSplitHashtag.length)) {
+                currentSplitHashtag = splitHashtagFromMap;
             } else {
-                if (camelCaseWords.length > splitHashtag.length) {
-                    splitHashtags.put(hashtagLowerCase, camelCaseWords);
-                } else {
-                    camelCaseWords = splitHashtag;
-                }
+                this.splitHashtags.put(hashtagLowerCase, currentSplitHashtag);
             }
 
-            for (String camelCaseWord : camelCaseWords) {
+            for (String camelCaseWord : currentSplitHashtag) {
                 concatenatedCamelCaseHashtags += " " + camelCaseWord;
             }
         }
-        System.out.println("Hashtags: " + concatenatedCamelCaseHashtags);
         return concatenatedCamelCaseHashtags;
     }
 
@@ -95,15 +99,19 @@ public class MalletInputFileCreator {
         normalizedTweet = normalizedTweet.replace('\r',' ');
         normalizedTweet = normalizedTweet.replace('\"','\'');
 
+        // Remove all special characters
         Pattern unicode = Pattern.compile("[^\\x00-\\x7F]",
                 Pattern.UNICODE_CASE | Pattern.CANON_EQ
                         | Pattern.CASE_INSENSITIVE);
         Matcher matcher = unicode.matcher(normalizedTweet);
         normalizedTweet = matcher.replaceAll(" ");
 
+        // Remove all invisible characters (not sure, that this is helping)
         normalizedTweet = normalizedTweet.replaceAll("\\p{C}", "");
+        // Remove all users
         normalizedTweet = normalizedTweet.replaceAll("@(\\w+)[\\s:\\p{Po}]"," ");
         normalizedTweet = normalizedTweet.replaceAll("@(\\w+)$","");
+        // Remove all urls
         normalizedTweet = normalizedTweet.replaceAll("(\\w+)://(\\S+)\\s"," ");
         normalizedTweet = normalizedTweet.replaceAll("(\\w+)://(\\S+)$"," ");
 
