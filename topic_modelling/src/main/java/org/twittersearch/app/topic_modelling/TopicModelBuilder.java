@@ -4,8 +4,10 @@ import au.com.bytecode.opencsv.CSVWriter;
 import cc.mallet.pipe.*;
 import cc.mallet.pipe.iterator.CsvIterator;
 import cc.mallet.topics.ParallelTopicModel;
+import cc.mallet.topics.TopicModelDiagnostics;
 import cc.mallet.types.*;
 import cc.mallet.util.CommandOption;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
 import java.io.*;
 import java.util.*;
@@ -21,42 +23,92 @@ public class TopicModelBuilder {
     }
 
     private static void piping() {
-        String dateSuffix = "_2014-07-23";
+        String dateSuffix = "_2014-08-02";
         String inputFileName = "mallet_input_file" + dateSuffix + ".csv";
 
-        int numTopics = 50;
+        int numTopics = 75;
         String filePrefix = "trimmed_tm-" + numTopics + dateSuffix;
 
         try {
-            InstanceList instances = createInstanceList(inputFileName);
-            ParallelTopicModel model = new ParallelTopicModel(numTopics, 1.0, 0.01);
+            InstanceList instances = createInstanceList(inputFileName, filePrefix);
+            ParallelTopicModel model = new ParallelTopicModel(numTopics, 0.01*numTopics, 0.05);
             model.addInstances(instances);
             model.setNumThreads(2);
             model.setNumIterations(500);
+            model.setSymmetricAlpha(false);
             model.estimate();
 
-            model.printTopicWordWeights(new File(filePrefix + "words.results"));
-            model.printTypeTopicCounts(new File(filePrefix + "type_topic_counts.results"));
-            writeTopWordsToCsv(filePrefix, model);
+            model.printTopicWordWeights(new File(filePrefix + "_words.results"));
+            model.printTypeTopicCounts(new File(filePrefix + "_type_topic_counts.results"));
+            model.printDocumentTopics(new File(filePrefix + "_document_topics.results"));
+            //TopicModelDiagnostics tmd = new TopicModelDiagnostics(model,20);
+            //TopicModelDiagnostics.TopicScores topicScores = tmd.getTokensPerTopic(model.tokensPerTopic);
+            //double[] scores = topicScores.scores;
+            //int counter = 0;
+            //for(double score : scores) {
+            //    System.out.println(counter + ": " + score);
+            //    counter++;
+            //}
+
+            TopicContainer[] topics = extractTopicScores(numTopics, model);
+
+            writeTopWordsToCsv(filePrefix, model, topics);
+
+
+
+            //model.getInferencer().writeInferredDistributions(instances, new File(filePrefix + "_distributions.results"),
+            //                                                 500, 50, 50, 0.01, 50);
 
             // The data alphabet maps word IDs to strings
-            Alphabet dataAlphabet = instances.getDataAlphabet();
+//            Alphabet dataAlphabet = instances.getDataAlphabet();
             //System.out.println("dataAlphabet:");
             //System.out.println(dataAlphabet.toString());
+// TODO: use this for topicScores -> iterate over instances or use typeTopicCounts
+//            FeatureSequence tokens = (FeatureSequence) model.getData().get(0).instance.getData();
+//            LabelSequence topics = model.getData().get(0).topicSequence;
+            //topics.getFeatures(); -> int[] -> for each word, which topic was assigned
 
-            FeatureSequence tokens = (FeatureSequence) model.getData().get(0).instance.getData();
-            LabelSequence topics = model.getData().get(0).topicSequence;
-
-            Formatter out = new Formatter(new StringBuilder(), Locale.US);
-            for (int position = 0; position < tokens.getLength(); position++) {
-                out.format("%s-%d ", dataAlphabet.lookupObject(tokens.getIndexAtPosition(position)), topics.getIndexAtPosition(position));
-            }
-            System.out.println(out);
+//            Formatter out = new Formatter(new StringBuilder(), Locale.US);
+//            for (int position = 0; position < tokens.getLength(); position++) {
+//                out.format("%s-%d ", dataAlphabet.lookupObject(tokens.getIndexAtPosition(position)), topics.getIndexAtPosition(position));
+//            }
+//            System.out.println(out);
 
         } catch (IOException e) {
             e.printStackTrace();
         }
 
+    }
+
+    private static TopicContainer[] extractTopicScores(int numTopics, ParallelTopicModel model) {
+        TopicContainer[] topics = new TopicContainer[numTopics];
+
+        for (int i = 0; i < topics.length; i++) {
+            topics[i] = new TopicContainer();
+        }
+
+        for (int typeIndex = 0; typeIndex < model.numTypes; typeIndex++) {
+            int[] topicCounts = model.typeTopicCounts[typeIndex];
+            int weight;
+            int topicIndex = 0;
+            while (topicIndex < topicCounts.length && topicCounts[topicIndex] > 0) {
+                // TopicCounts encodes the topic as well as the count, therefore, we need bitwise operations.
+                int currentTopic = topicCounts[topicIndex] & model.topicMask; // isolate the topic
+                weight = topicCounts[topicIndex] >> model.topicBits; // isolate the counts
+                topics[currentTopic].addScore(weight);
+                topics[currentTopic].addWord(1);
+                topicIndex++;
+            }
+        }
+
+        DescriptiveStatistics stats = new DescriptiveStatistics();
+        for (TopicContainer topic : topics) {
+            stats.addValue(topic.getNumberOfWords());
+        }
+        System.out.println("Standard deviation in word counts: " + stats.getStandardDeviation());
+        System.out.println("Normalized standard deviation in word counts: " + (stats.getStandardDeviation()/((double)numTopics)));
+
+        return topics;
     }
 
     private static void writeTopWordsToCsv(String filePrefix, ParallelTopicModel model) throws IOException {
@@ -72,7 +124,31 @@ public class TopicModelBuilder {
         topWordsCsvWriter.close();
     }
 
-    private static InstanceList createInstanceList(String inputFileName) throws IOException {
+    private static void writeTopWordsToCsv(String filePrefix, ParallelTopicModel model, TopicContainer[] topicScores) throws IOException {
+        List<TopicContainer> topics = Arrays.asList(topicScores);
+        CSVWriter topWordsCsvWriter = new CSVWriter(new FileWriter(filePrefix + "_top_words.results"), ',', ' ');
+        Object[][] topWords = model.getTopWords(20);
+
+        assert(topicScores.length == topWords.length);
+        for (int topicIndex = 0; topicIndex < topicScores.length; topicIndex++) {
+            Object[] topic = topWords[topicIndex];
+            String[] line = new String[topic.length];
+            for (int i = 0; i < topic.length; i++) {
+                line[i] = (String) topic[i];
+            }
+            topics.get(topicIndex).setTopWords(line);
+        }
+
+        Collections.sort(topics);
+
+        for (TopicContainer topic : topics) {
+            topWordsCsvWriter.writeNext(topic.getScoreAndTopWordsAsLine());
+        }
+        //topWordsCsvWriter.writeNext(line);
+        topWordsCsvWriter.close();
+    }
+
+    private static InstanceList createInstanceList(String inputFileName, String filePrefix) throws IOException {
         //TODO: write less duplicated code!
         // ideas:   - use prune method from FeatureSequence (but needs the creation of a new Alphabet)
         //          - write my own pipe which is able to do this (probably use two pipes -> one to extract frequencies, one to delete less frequent words)
@@ -82,10 +158,10 @@ public class TopicModelBuilder {
         // Pipes: lowercase, tokenize, remove stopwords, map to features
         standardPipeList.add(new CharSequenceLowercase());
         //This pattern filters all sequences of at least 3 literals
-        standardPipeList.add(new CharSequence2TokenSequence(Pattern.compile("[\\p{L}][\\p{L}\\p{Pd}\\p{M}']+\\p{L}")));
+        standardPipeList.add(new CharSequence2TokenSequence(Pattern.compile("[#\\p{L}][\\p{L}\\p{Pd}\\p{M}']+\\p{L}")));
 
-        TokenSequenceRemoveStopwords stopWordsPipe = new TokenSequenceRemoveStopwords(new File("stop_lists/stop_words_mysql.txt"), "UTF-8", false, false, false);
-        standardPipeList.add(stopWordsPipe);
+        TokenSequenceRemoveStopwords mySqlStopWordsPipe = new TokenSequenceRemoveStopwords(new File("stop_lists/stop_words_mysql.txt"), "UTF-8", false, false, false);
+        standardPipeList.add(mySqlStopWordsPipe);
         standardPipeList.add(new StemmerPipe());
         standardPipeList.add(new TokenSequence2FeatureSequence());
 
@@ -100,22 +176,44 @@ public class TopicModelBuilder {
         // Create the final instanceList which contains no words which are in less than 10 tweets.
         ArrayList<Pipe> prunedPipeList = new ArrayList<Pipe>();
         prunedPipeList.add(new CharSequenceLowercase());
-        prunedPipeList.add(new CharSequence2TokenSequence(Pattern.compile("[\\p{L}][\\p{L}\\p{Pd}\\p{M}']+\\p{L}")));
+        prunedPipeList.add(new CharSequence2TokenSequence(Pattern.compile("[#\\p{L}][\\p{L}\\p{Pd}\\p{M}']+\\p{L}")));
+        prunedPipeList.add(mySqlStopWordsPipe);
+        prunedPipeList.add(new StemmerPipe());
 
         Map<String, Integer> wordFrequencies = getWordFrequencies(initialInstances);
         List<String> cutOffWords = getCutOffWords(wordFrequencies, 10);
-        stopWordsPipe.addStopWords(cutOffWords.toArray(new String[cutOffWords.size()]));
-        prunedPipeList.add(stopWordsPipe);
+        TokenSequenceRemoveStopwords cutOffStopWordsPipe = new TokenSequenceRemoveStopwords();
+        cutOffStopWordsPipe.addStopWords(cutOffWords.toArray(new String[cutOffWords.size()]));
+        prunedPipeList.add(cutOffStopWordsPipe);
 
-        prunedPipeList.add(new StemmerPipe());
         prunedPipeList.add(new TokenSequence2FeatureSequence());
 
         InstanceList prunedInstances = new InstanceList (new SerialPipes(prunedPipeList));
         fileReader = new InputStreamReader(new FileInputStream(new File(inputFileName)), "UTF-8");
         prunedInstances.addThruPipe(new CsvIterator(fileReader, Pattern.compile("^(\\S*)[\\s,]*(\\S*)[\\s,]*(.*)$"),
                 3, 2, 1)); // data, label, name fields
+        // TODO: sort words after frequencies and add most common to stop word list
+        List<Map.Entry<String, Integer>> wordFrequenciesList = new LinkedList<Map.Entry<String, Integer>>(wordFrequencies.entrySet());
+        Collections.sort(wordFrequenciesList, new Comparator<Map.Entry<String, Integer>>() {
+            @Override
+            public int compare(Map.Entry<String, Integer> o1, Map.Entry<String, Integer> o2) {
+                return o2.getValue().compareTo(o1.getValue());
+            }
+        });
+        writeWordFrequenciesToCsv(filePrefix, wordFrequenciesList);
         fileReader.close();
         return prunedInstances;
+    }
+
+    private static void writeWordFrequenciesToCsv(String filePrefix, List<Map.Entry<String,Integer>> wordFrequenciesList) throws IOException {
+        CSVWriter wordFrequencyCsvWriter = new CSVWriter(new FileWriter(filePrefix + "_word_frequencies.results"), ',', ' ');
+        String[] line = new String[2];
+        for (Map.Entry<String, Integer> wordFrequency : wordFrequenciesList) {
+            line[0] = wordFrequency.getKey();
+            line[1] = wordFrequency.getValue().toString();
+            wordFrequencyCsvWriter.writeNext(line);
+        }
+        wordFrequencyCsvWriter.close();
     }
 
     private static List<String> getCutOffWords(Map<String, Integer> wordFrequencies, int cutOff) {
@@ -129,7 +227,7 @@ public class TopicModelBuilder {
     }
 
     private static Map<String, Integer> getWordFrequencies(InstanceList instances) {
-        // Collect frequencies of all each word.
+        // Collect frequencies of each word.
         Map<String, Integer> wordFrequencies = new HashMap<String, Integer>();
         FeatureSequence data;
         String word;
