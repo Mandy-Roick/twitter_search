@@ -21,21 +21,23 @@ public class MalletInputFileCreator {
     DBManager dbManager;
     Object2ObjectMap<String, String[]> splitHashtags;
     Map<Long, List<String>> tweetsHashtags;
+    String date;
 
     public static void main(String[] args) {
-        MalletInputFileCreator malletInputFileCreator = new MalletInputFileCreator();
-        malletInputFileCreator.writeDBContentToInputFile("mallet_input_file_2014-07-23.csv");
+        String date = "2014-08-02";
+        MalletInputFileCreator malletInputFileCreator = new MalletInputFileCreator(date);
+        malletInputFileCreator.writeDBContentToInputFile("mallet_input_file_" + date + ".csv");
     }
 
-    public MalletInputFileCreator() {
-        dbManager = new DBManager();
-        splitHashtags = new Object2ObjectOpenHashMap<String, String[]>();
+    public MalletInputFileCreator(String date) {
+        this.date = date;
+        this.dbManager = new DBManager();
+        this.splitHashtags = new Object2ObjectOpenHashMap<String, String[]>();
     }
 
     private void writeDBContentToInputFile(String filePath) {
-        String date = "2014-07-23";
         Map<Long, String> tweetIdsToContent = this.dbManager.selectTweetsCreatedAt(date);
-        tweetsHashtags = dbManager.selectTweetsAndHashtags();
+        this.tweetsHashtags = this.dbManager.selectTweetsAndHashtags();
 
         try {
             CSVWriter csvWriter = new CSVWriter(new FileWriter(filePath), '\t', '\"');
