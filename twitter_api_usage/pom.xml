@@ -23,7 +23,7 @@
                   <archive>
                       <manifest>
                           <addClasspath>true</addClasspath>
-                          <mainClass>org.twittersearch.app.twitter_api_usage.TwitterManager</mainClass>
+                          <mainClass>org.twittersearch.app.twitter_api_usage.UrlCollector</mainClass>
                       </manifest>
                   </archive>
               </configuration>

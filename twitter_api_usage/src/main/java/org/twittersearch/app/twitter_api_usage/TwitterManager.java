@@ -2,15 +2,12 @@ package org.twittersearch.app.twitter_api_usage;
 
 import org.twittersearch.app.twitter_api_usage.TweetIndexer;
 import org.twittersearch.app.twitter_api_usage.TweetListener;
-import twitter4j.Query;
-import twitter4j.QueryResult;
-import twitter4j.Status;
-import twitter4j.Twitter;
-import twitter4j.TwitterException;
-import twitter4j.TwitterFactory;
-import twitter4j.TwitterStream;
-import twitter4j.TwitterStreamFactory;
+import twitter4j.*;
 import twitter4j.conf.ConfigurationBuilder;
+
+import java.net.URL;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Hello world!
@@ -48,6 +45,23 @@ public class TwitterManager
 		TweetIndexer ti = new TweetIndexer();
 		ti.resolveUrls(tweet.getURLEntities());
 	}
+
+    public List<String> getUrlsForTweet(Long id) {
+        List<String> urls = new LinkedList<String>();
+        try {
+            Status tweet = this.twitter.showStatus(id);
+            URLEntity[] urlEntities = tweet.getURLEntities();
+            for(URLEntity urlEntity : urlEntities) {
+                urls.add(urlEntity.getURL());
+            }
+
+        } catch (TwitterException e) {
+            System.out.println("Could not read Tweet with ID: " + id);
+            e.printStackTrace();
+        }
+
+        return urls;
+    }
 	
 	public static void main(String[] args) throws TwitterException {
 		ConfigurationBuilder cb = new ConfigurationBuilder();
@@ -58,16 +72,7 @@ public class TwitterManager
     	  .setOAuthAccessTokenSecret("oEhkZmQ65NFHmPbMZwgZfYJTpuqQ2V1XX1yJt6Tge28nF");
         TwitterStream twitterStream = new TwitterStreamFactory(cb.build()).getInstance();
 
-        int numberOfThreads = 20;
-        if (args.length == 1) {
-            try{
-                numberOfThreads = Integer.parseInt(args[0]);
-            } catch (NumberFormatException e) {
-                System.out.println("The given argument has to be a number (the number of threads)!");
-            }
-        }
-
-        TweetListener listener = new TweetListener(numberOfThreads);
+        TweetListener listener = new TweetListener();
         twitterStream.addListener(listener);
         twitterStream.sample();
         //listener.search("office");

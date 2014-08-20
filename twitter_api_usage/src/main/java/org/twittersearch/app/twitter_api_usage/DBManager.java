@@ -1,27 +1,8 @@
 package org.twittersearch.app.twitter_api_usage;
 
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
-import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.document.StringField;
-import org.apache.lucene.document.TextField;
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.queryparser.classic.ParseException;
-import org.apache.lucene.queryparser.classic.QueryParser;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.TopScoreDocCollector;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.RAMDirectory;
-import org.apache.lucene.util.Version;
 import twitter4j.HashtagEntity;
 import twitter4j.Status;
 
-import java.io.IOException;
 import java.sql.*;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -229,9 +210,17 @@ public class DBManager {
 
     //---------------------------------    URLs      ------------------------------------//
 
-    public void writeUrlContentToDB(Status tweet, String url, String urlContent) {
-        if(!urlForTweetDoesExist(tweet.getId(), url)) {
-            createUrlForTweet(tweet, url, urlContent);
+    public void writeUrlContentToDB(long tweetId, String url, boolean hasText) {
+        if(!urlForTweetDoesExist(tweetId, url)) {
+            createUrlForTweet(tweetId, url, hasText);
+        }
+    }
+
+    public void writeUrlContentToDB(long tweetId, String url, boolean hasText, String urlContent) {
+        if(!urlForTweetDoesExist(tweetId, url)) {
+            createUrlForTweet(tweetId, url, hasText, urlContent);
+        } else {
+            updateUrlForTweet(tweetId, url, hasText, urlContent);
         }
     }
 
@@ -255,14 +244,51 @@ public class DBManager {
         return doesExist;
     }
 
-    private void createUrlForTweet(Status tweet, String url, String urlContent) {
+    private void updateUrlForTweet(long tweetId, String url, boolean hasText, String urlContent) {
+        try {
+            PreparedStatement statement = connection.prepareStatement("" +
+                    "UPDATE mandy_masterarbeit.twitter_tweet_url " +
+                    "SET has_text = ?, " +
+                    "content = ? " +
+                    "WHERE (url = ?) AND (tweet = ?)");
+
+            statement.setBoolean(1, hasText);
+            statement.setString(2, urlContent);
+            statement.setString(3, url);
+            statement.setLong(4, tweetId);
+            statement.execute();
+            statement.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void createUrlForTweet(long tweetId, String url, boolean hasText) {
         try {
             PreparedStatement statement = this.connection.prepareStatement("" +
-                    "INSERT INTO mandy_masterarbeit.twitter_tweet_url(url, content, tweet)" +
+                    "INSERT INTO mandy_masterarbeit.twitter_tweet_url(url, has_text, tweet)" +
                     "VALUES (?, ?, ?)");
             statement.setString(1, url);
-            statement.setString(2, urlContent);
-            statement.setLong(3, tweet.getId());
+            statement.setBoolean(2, hasText);
+            statement.setLong(3, tweetId);
+            statement.execute();
+            statement.close();
+        } catch (SQLException e) {
+            System.out.println("UrlContent could not be saved to DB for URL " + url);
+            System.out.println(e.toString());
+            //e.printStackTrace();
+        }
+    }
+
+    private void createUrlForTweet(long tweetId, String url, boolean hasText, String urlContent) {
+        try {
+            PreparedStatement statement = this.connection.prepareStatement("" +
+                    "INSERT INTO mandy_masterarbeit.twitter_tweet_url(url, has_text, content, tweet)" +
+                    "VALUES (?, ?, ?, ?)");
+            statement.setString(1, url);
+            statement.setBoolean(2, hasText);
+            statement.setString(3, urlContent);
+            statement.setLong(4, tweetId);
             statement.execute();
             statement.close();
         } catch (SQLException e) {
@@ -336,6 +362,34 @@ public class DBManager {
             e.printStackTrace();
         }
         return tweetsHashtags;
+    }
+
+    public Map<Long, List<String>> selectTweetsUrlsWithoutText() {
+        Map<Long, List<String>> tweetsUrls = new HashMap<Long, List<String>>();
+
+        try {
+            Statement statement = connection.createStatement();
+            ResultSet result = statement.executeQuery("SELECT url, tweet FROM mandy_masterarbeit.twitter_tweet_url " +
+                                                      "WHERE (has_text = 'f')");
+
+            while(result.next()) {
+                Long tweetId = result.getLong(2);
+                List<String> urls = tweetsUrls.get(tweetId);
+                if(urls == null) {
+                    urls = new LinkedList<String>();
+                }
+                String url = result.getString(1);
+                urls.add(url);
+                tweetsUrls.put(tweetId, urls);
+            }
+
+            statement.close();
+        } catch (SQLException e) {
+            System.out.println("Could not select urls without text!");
+            e.printStackTrace();
+        }
+
+        return tweetsUrls;
     }
 
 }

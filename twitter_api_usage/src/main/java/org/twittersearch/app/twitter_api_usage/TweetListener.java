@@ -12,10 +12,6 @@ public class TweetListener implements StatusListener {
 	
 	public TweetListener() { this.dbWriter = new TweetToDBWriter();	}
 
-    public TweetListener(int numberOfThreads) {
-        this.dbWriter = new TweetToDBWriter(numberOfThreads);
-    }
-
     public void onStatus(Status status) {
     	if(status.getLang().equals("en")) {
     		//this.ti.addTweet(status);
@@ -24,29 +20,13 @@ public class TweetListener implements StatusListener {
     		if((counter % 100) == 0) {
         		System.out.println(counter + " Tweet: " + status.getText());
         	}
-    		counter++;
 
             if((counter % 10000) == 0) {
-                //System.out.println("10,000 :)");
-                try {
-                    this.dbWriter.collectUrlsAndCloseDB();
-                } catch (Throwable throwable) {
-                    throwable.printStackTrace();
-                }
-                //this.dbWriter = new TweetToDBWriter();
-                //System.exit(1);
-
-            } else if((counter % 1000) == 0) {
-                //System.out.println("10,000 :)");
-                try {
-                    this.dbWriter.collectUrls();
-                } catch (Throwable throwable) {
-                    throwable.printStackTrace();
-                }
-                //this.dbWriter = new TweetToDBWriter();
-                //System.exit(1);
-
+                this.dbWriter.closeDB();
             }
+
+    		counter++;
+
     	}
     }
 
