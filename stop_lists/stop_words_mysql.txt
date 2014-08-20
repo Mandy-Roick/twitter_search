@@ -114,6 +114,7 @@ doesn't
 doing
 don't
 done
+dont
 down
 downwards
 during
@@ -165,6 +166,7 @@ go
 goes
 going
 gone
+gonna
 got
 gotten
 greetings
@@ -191,6 +193,7 @@ herein
 hereupon
 hers
 herself
+hey
 hi
 him
 himself
@@ -200,7 +203,6 @@ hopefully
 how
 howbeit
 however
-http
 i'd
 i'll
 i'm
@@ -208,6 +210,7 @@ i've
 ie
 if
 ignored
+imma
 immediate
 in
 inasmuch
@@ -250,6 +253,7 @@ like
 liked
 likely
 little
+lol
 look
 looking
 looks
@@ -479,6 +483,7 @@ very
 via
 viz
 vs
+wanna
 want
 wants
 was
