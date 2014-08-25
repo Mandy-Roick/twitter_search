@@ -4,10 +4,7 @@ import twitter4j.Status;
 import twitter4j.URLEntity;
 
 import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 
 /**
  * Created by Mandy Roick on 07.08.2014.
@@ -26,7 +23,10 @@ public class UrlCollector {
         DBManager dbManager = new DBManager();
         Map<Long, List<String>> tweetsUrls = dbManager.selectTweetsUrlsWithoutText();
 
-        ExecutorService executorService = Executors.newFixedThreadPool(numberOfThreads);
+        ThreadFactory threadFactory = Executors.defaultThreadFactory();
+        ExecutorService executorService = new ThreadPoolExecutor(numberOfThreads, numberOfThreads+5, 30,
+                                    TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(tweetsUrls.size()*2), threadFactory);//Executors.newFixedThreadPool(numberOfThreads);
+
 
         Map<Long, Map<String, Future<String>>> urlFutureTextsForTweets = startUrlThreads(tweetsUrls, executorService);
         collectUrlThreads(urlFutureTextsForTweets, dbManager);
