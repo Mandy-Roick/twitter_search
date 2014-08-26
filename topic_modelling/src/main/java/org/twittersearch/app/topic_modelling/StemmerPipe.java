@@ -23,4 +23,11 @@ public class StemmerPipe extends Pipe {
 
         return carrier;
     }
+
+    public static String stem(String input) {
+        PorterStemmer stemmer = new PorterStemmer();
+        stemmer.setCurrent(input);
+        stemmer.stem();
+        return stemmer.getCurrent();
+    }
 }

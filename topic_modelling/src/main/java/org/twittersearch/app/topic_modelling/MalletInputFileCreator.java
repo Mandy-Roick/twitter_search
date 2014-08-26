@@ -96,7 +96,7 @@ public class MalletInputFileCreator {
         return concatenatedCamelCaseHashtags;
     }
 
-    private String normalizeTweetContent(String tweetContent) {
+    public static String normalizeTweetContent(String tweetContent) {
         String normalizedTweet = tweetContent.replace('\n',' ');
         normalizedTweet = normalizedTweet.replace('\r',' ');
         normalizedTweet = normalizedTweet.replace('\"','\'');

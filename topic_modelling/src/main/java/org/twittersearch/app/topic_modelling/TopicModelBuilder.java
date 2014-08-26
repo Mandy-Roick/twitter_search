@@ -14,7 +14,7 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 /**
- * Created by kleiner Klotz on 25.07.2014.
+ * Created by Mandy Roick on 25.07.2014.
  */
 public class TopicModelBuilder {
 

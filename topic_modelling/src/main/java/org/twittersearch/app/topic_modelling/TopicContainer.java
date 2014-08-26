@@ -5,7 +5,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Created by kleiner Klotz on 19.08.2014.
+ * Created by Mandy Roick on 19.08.2014.
  */
 public class TopicContainer implements Comparable {
 
