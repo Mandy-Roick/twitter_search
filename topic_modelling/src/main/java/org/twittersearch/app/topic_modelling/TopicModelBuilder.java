@@ -26,12 +26,12 @@ public class TopicModelBuilder {
         String dateSuffix = "_2014-08-02";
         String inputFileName = "mallet_input_file" + dateSuffix + ".csv";
 
-        int numTopics = 75;
+        int numTopics = 50;
         String filePrefix = "trimmed_tm-" + numTopics + dateSuffix;
 
         try {
             InstanceList instances = createInstanceList(inputFileName, filePrefix);
-            ParallelTopicModel model = new ParallelTopicModel(numTopics, 0.01*numTopics, 0.05);
+            ParallelTopicModel model = new ParallelTopicModel(numTopics, 0.01*numTopics, 0.1);
             model.addInstances(instances);
             model.setNumThreads(2);
             model.setNumIterations(500);
@@ -84,7 +84,7 @@ public class TopicModelBuilder {
         TopicContainer[] topics = new TopicContainer[numTopics];
 
         for (int i = 0; i < topics.length; i++) {
-            topics[i] = new TopicContainer();
+            topics[i] = new TopicContainer(i);
         }
 
         for (int typeIndex = 0; typeIndex < model.numTypes; typeIndex++) {
@@ -101,12 +101,13 @@ public class TopicModelBuilder {
             }
         }
 
+        // Statistics
         DescriptiveStatistics stats = new DescriptiveStatistics();
         for (TopicContainer topic : topics) {
             stats.addValue(topic.getNumberOfWords());
         }
         System.out.println("Standard deviation in word counts: " + stats.getStandardDeviation());
-        System.out.println("Normalized standard deviation in word counts: " + (stats.getStandardDeviation()/((double)numTopics)));
+        System.out.println("Coefficient of variation in word counts: " + (stats.getStandardDeviation()/(stats.getMean())));
 
         return topics;
     }
