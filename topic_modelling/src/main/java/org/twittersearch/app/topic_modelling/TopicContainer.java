@@ -11,14 +11,17 @@ public class TopicContainer implements Comparable {
 
     private int score = 0;
     private int numberOfWords = 0;
+    private int id;
     private String[] topWords;
 
-    public TopicContainer() {
+    public TopicContainer(int id) {
+        this.id = id;
         this.score = 0;
         this.numberOfWords = 0;
     }
 
-    public TopicContainer(int score, String[] topWords) {
+    public TopicContainer(int id, int score, String[] topWords) {
+        this.id = id;
         this.score = score;
         this.topWords = topWords;
     }
@@ -38,6 +41,7 @@ public class TopicContainer implements Comparable {
 
     public String[] getScoreAndTopWordsAsLine() {
         List<String> scoreAndTopWords = new ArrayList<String>();
+        scoreAndTopWords.add(Integer.toString(this.id));
         scoreAndTopWords.add(Integer.toString(this.getScore()));
         scoreAndTopWords.add(Integer.toString(this.getNumberOfWords()));
         scoreAndTopWords.addAll(Arrays.asList(this.getTopWords()));
