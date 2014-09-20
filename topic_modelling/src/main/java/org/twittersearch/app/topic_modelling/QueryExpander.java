@@ -13,15 +13,15 @@ import java.util.regex.Pattern;
  * Created by Mandy Roick on 20.08.2014.
  */
 public class QueryExpander {
-    private static int numOfTopicsForExpansion = 3;
-    private static int numOfTopWordsPerTopic = 3;
+    private static int numOfTopicsForExpansion = 5;
+    private static int numOfTopWordsPerTopic = 10;
 
     public static void main(String[] args) {
         String[] expandedQuery;
         if (args.length == 1 ) {
             expandedQuery = expand(args[1]);
         } else {
-            expandedQuery = expand("politics");
+            expandedQuery = expand("Politics");
         }
 
         for (String queryElement : expandedQuery) {
@@ -35,8 +35,8 @@ public class QueryExpander {
         String[] splitQuery = splitQuery(preprocessedQuery);
         String[] postprocessedQuery = postprocessQuery(splitQuery);
 
-        Map<String, String[]> typeTopicCounts = readTopicModel("trimmed_tm-50_2014-08-02_type_topic_counts.results");
-        Map<Integer, String[]> topWords = readTopWords("trimmed_tm-50_2014-08-02_top_words.results");
+        Map<String, String[]> typeTopicCounts = readTopicModel("trimmed_tm-200_2014-09-16_type_topic_counts.results");
+        Map<Integer, String[]> topWords = readTopWords("trimmed_tm-200_2014-09-16_top_words.results");
 
         String[] expandedQuery = expandThroughTopicModel(postprocessedQuery, typeTopicCounts, topWords);
 
@@ -137,6 +137,7 @@ public class QueryExpander {
 
     private static String preprocessQuery(String query) {
         String normalizedQuery = MalletInputFileCreator.normalizeTweetContent(query);
-        return normalizedQuery;
+        String normalizedLowerCaseQuery = normalizedQuery.toLowerCase();
+        return normalizedLowerCaseQuery;
     }
 }
