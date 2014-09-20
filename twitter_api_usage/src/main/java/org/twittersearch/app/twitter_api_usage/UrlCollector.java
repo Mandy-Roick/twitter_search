@@ -29,7 +29,9 @@ public class UrlCollector {
 
 
         Map<Long, Map<String, Future<String>>> urlFutureTextsForTweets = startUrlThreads(tweetsUrls, executorService);
-        collectUrlThreads(urlFutureTextsForTweets, dbManager);
+        while (!urlFutureTextsForTweets.isEmpty()) {
+            collectUrlThreads(urlFutureTextsForTweets, dbManager);
+        }
     }
 
     private static Map<Long, Map<String, Future<String>>> startUrlThreads(Map<Long, List<String>> tweetsUrls, ExecutorService executorService) {
@@ -53,8 +55,10 @@ public class UrlCollector {
         int exceptionCounter = 0;
         for (Map.Entry<Long, Map<String,Future<String>>> urlFutureTextsForTweet : urlFutureTextsForTweets.entrySet()) {
             for (Map.Entry<String, Future<String>> urlContent : urlFutureTextsForTweet.getValue().entrySet()) {
-                if(!writeURLContentToDB(urlFutureTextsForTweet.getKey(), urlContent.getKey(), urlContent.getValue(), dbManager)) {
-                    exceptionCounter++;
+                if (urlContent.getValue().isDone()) {
+                    if (!writeURLContentToDB(urlFutureTextsForTweet.getKey(), urlContent.getKey(), urlContent.getValue(), dbManager)) {
+                        exceptionCounter++;
+                    }
                 }
             }
 
