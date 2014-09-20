@@ -4,9 +4,7 @@ import au.com.bytecode.opencsv.CSVWriter;
 import cc.mallet.pipe.*;
 import cc.mallet.pipe.iterator.CsvIterator;
 import cc.mallet.topics.ParallelTopicModel;
-import cc.mallet.topics.TopicModelDiagnostics;
 import cc.mallet.types.*;
-import cc.mallet.util.CommandOption;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
 import java.io.*;
@@ -19,19 +17,19 @@ import java.util.regex.Pattern;
 public class TopicModelBuilder {
 
     public static void main(String[] args) {
-        piping();
+        learnTopicModel();
     }
 
-    private static void piping() {
-        String dateSuffix = "_2014-08-02";
+    private static void learnTopicModel() {
+        String dateSuffix = "_2014-09-16";
         String inputFileName = "mallet_input_file" + dateSuffix + ".csv";
 
-        int numTopics = 50;
+        int numTopics = 200;
         String filePrefix = "trimmed_tm-" + numTopics + dateSuffix;
 
         try {
             InstanceList instances = createInstanceList(inputFileName, filePrefix);
-            ParallelTopicModel model = new ParallelTopicModel(numTopics, 0.01*numTopics, 0.1);
+            ParallelTopicModel model = new ParallelTopicModel(numTopics, 0.01*numTopics, 0.05);
             model.addInstances(instances);
             model.setNumThreads(2);
             model.setNumIterations(500);
@@ -149,7 +147,7 @@ public class TopicModelBuilder {
         topWordsCsvWriter.close();
     }
 
-    private static InstanceList createInstanceList(String inputFileName, String filePrefix) throws IOException {
+    public static InstanceList createInstanceList(String inputFileName, String filePrefix) throws IOException {
         //TODO: write less duplicated code!
         // ideas:   - use prune method from FeatureSequence (but needs the creation of a new Alphabet)
         //          - write my own pipe which is able to do this (probably use two pipes -> one to extract frequencies, one to delete less frequent words)
