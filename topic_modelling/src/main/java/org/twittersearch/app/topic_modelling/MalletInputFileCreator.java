@@ -24,7 +24,7 @@ public class MalletInputFileCreator {
     String date;
 
     public static void main(String[] args) {
-        String date = "2014-08-02";
+        String date = "2014-09-16";
         MalletInputFileCreator malletInputFileCreator = new MalletInputFileCreator(date);
         malletInputFileCreator.writeDBContentToInputFile("mallet_input_file_" + date + ".csv");
     }
@@ -36,8 +36,8 @@ public class MalletInputFileCreator {
     }
 
     private void writeDBContentToInputFile(String filePath) {
-        Map<Long, String> tweetIdsToContent = this.dbManager.selectTweetsCreatedAt(date);
-        this.tweetsHashtags = this.dbManager.selectTweetsAndHashtags();
+        Map<Long, String> tweetIdsToContent = this.dbManager.selectTweetsCreatedAt(this.date);
+        this.tweetsHashtags = this.dbManager.selectTweetsAndHashtagsCreatedAt(this.date);
 
         try {
             CSVWriter csvWriter = new CSVWriter(new FileWriter(filePath), '\t', '\"');
@@ -116,6 +116,8 @@ public class MalletInputFileCreator {
         // Remove all urls
         normalizedTweet = normalizedTweet.replaceAll("(\\w+)://(\\S+)\\s"," ");
         normalizedTweet = normalizedTweet.replaceAll("(\\w+)://(\\S+)$"," ");
+        normalizedTweet = normalizedTweet.replaceAll("https?(\\p{Punct}+)"," ");
+        normalizedTweet = normalizedTweet.replaceAll("https?(\\p{Punct}*)(\\s*)$"," ");
 
         return normalizedTweet;
     }

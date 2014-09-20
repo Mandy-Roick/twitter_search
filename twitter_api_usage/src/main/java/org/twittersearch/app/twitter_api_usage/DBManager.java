@@ -39,11 +39,12 @@ public class DBManager {
     }
 
     public void writeTweetToDB(Status tweet) {
-        if (tweetDoesExist(tweet.getId())) {
-            updateTweet(tweet);
-        } else {
-            createTweet(tweet);
-        }
+        //if (tweetDoesExist(tweet.getId())) {
+        //    updateTweet(tweet);
+        //} else {
+        //    createTweet(tweet);
+        //}
+        createTweet(tweet);
     }
 
     private boolean tweetDoesExist(long tweetId) {
@@ -167,9 +168,9 @@ public class DBManager {
     public void writeHashtagsToDB(Status tweet) {
         HashtagEntity[] hashtags = tweet.getHashtagEntities();
         for (HashtagEntity hashtag : hashtags) {
-            if (!hashtagForTweetDoesExist(tweet.getId(), hashtag.getText())) {
+            //if (!hashtagForTweetDoesExist(tweet.getId(), hashtag.getText())) {
                 createHashtagForTweet(tweet, hashtag);
-            }
+            //}
         }
     }
 
@@ -211,9 +212,9 @@ public class DBManager {
     //---------------------------------    URLs      ------------------------------------//
 
     public void writeUrlContentToDB(long tweetId, String url, boolean hasText) {
-        if(!urlForTweetDoesExist(tweetId, url)) {
+        //if(!urlForTweetDoesExist(tweetId, url)) {
             createUrlForTweet(tweetId, url, hasText);
-        }
+        //}
     }
 
     public void writeUrlContentToDB(long tweetId, String url, boolean hasText, String urlContent) {
@@ -340,11 +341,13 @@ public class DBManager {
         return hashtags.toArray(new String[hashtags.size()]);
     }
 
-    public Map<Long, List<String>> selectTweetsAndHashtags() {
+    public Map<Long, List<String>> selectTweetsAndHashtagsCreatedAt(String date) {
         Map<Long, List<String>> tweetsHashtags = new HashMap<Long, List<String>>();
         try {
             Statement statement = connection.createStatement();
-            ResultSet result = statement.executeQuery("SELECT tweet,hashtag FROM mandy_masterarbeit.twitter_tweet_hashtag ");
+            ResultSet result = statement.executeQuery("SELECT tweet,hashtag FROM " +
+                    "(SELECT id FROM mandy_masterarbeit.twitter_tweet WHERE created_at = '" + date + "') tweet " +
+                    "INNER JOIN mandy_masterarbeit.twitter_tweet_hashtag hashtag ON tweet.id = hashtag.tweet");
 
             while(result.next()) {
                 Long tweetId = result.getLong(1);
