@@ -21,9 +21,9 @@ public class TweetListener implements StatusListener {
         		System.out.println(counter + " Tweet: " + status.getText());
         	}
 
-            if((counter % 10000) == 0) {
-                this.dbWriter.closeDB();
-            }
+            //if((counter % 1000) == 0) {
+            //    this.dbWriter.closeDB();
+            //}
 
     		counter++;
 

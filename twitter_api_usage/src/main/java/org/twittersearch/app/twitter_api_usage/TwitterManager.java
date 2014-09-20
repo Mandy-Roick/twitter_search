@@ -64,6 +64,9 @@ public class TwitterManager
     }
 	
 	public static void main(String[] args) throws TwitterException {
+        //TwitterManager tm = new TwitterManager();
+        //tm.openTweet(491999333449871360L);
+
 		ConfigurationBuilder cb = new ConfigurationBuilder();
     	cb.setDebugEnabled(true)
     	  .setOAuthConsumerKey("n5gjzGruXQcBlwZJ0Kj4UXyY7")
