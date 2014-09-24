@@ -136,7 +136,7 @@ public class QueryExpander {
     }
 
     private static String preprocessQuery(String query) {
-        String normalizedQuery = MalletInputFileCreator.normalizeTweetContent(query);
+        String normalizedQuery = TweetPreprocessor.normalizeTweetContent(query);
         String normalizedLowerCaseQuery = normalizedQuery.toLowerCase();
         return normalizedLowerCaseQuery;
     }

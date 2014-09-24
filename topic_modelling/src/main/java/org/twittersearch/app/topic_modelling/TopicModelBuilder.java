@@ -28,7 +28,16 @@ public class TopicModelBuilder {
         String filePrefix = "trimmed_tm-" + numTopics + dateSuffix;
 
         try {
-            InstanceList instances = createInstanceList(inputFileName, filePrefix);
+
+            // We need two instanceIterator, because of the word frequencies
+            Reader fileReader1 = new InputStreamReader(new FileInputStream(new File(inputFileName)), "UTF-8");
+            Reader fileReader2 = new InputStreamReader(new FileInputStream(new File(inputFileName)), "UTF-8");
+            Iterator<Instance> inputIterator1 =  new CsvIterator(fileReader1, Pattern.compile("^(\\S*)[\\s,]*(\\S*)[\\s,]*(.*)$"), 3, 2, 1); // data, label, name fields
+            Iterator<Instance> inputIterator2 =  new CsvIterator(fileReader2, Pattern.compile("^(\\S*)[\\s,]*(\\S*)[\\s,]*(.*)$"), 3, 2, 1); // data, label, name fields
+            InstanceList instances = createInstanceList(inputIterator1, inputIterator2, filePrefix);
+            fileReader1.close();
+            fileReader2.close();
+
             ParallelTopicModel model = new ParallelTopicModel(numTopics, 0.01*numTopics, 0.05);
             model.addInstances(instances);
             model.setNumThreads(2);
@@ -147,7 +156,7 @@ public class TopicModelBuilder {
         topWordsCsvWriter.close();
     }
 
-    public static InstanceList createInstanceList(String inputFileName, String filePrefix) throws IOException {
+    private static InstanceList createInstanceList(Iterator<Instance> inputIterator1, Iterator<Instance> inputIterator2, String filePrefix, boolean writeFrequencies) throws IOException {
         //TODO: write less duplicated code!
         // ideas:   - use prune method from FeatureSequence (but needs the creation of a new Alphabet)
         //          - write my own pipe which is able to do this (probably use two pipes -> one to extract frequencies, one to delete less frequent words)
@@ -166,10 +175,7 @@ public class TopicModelBuilder {
 
         InstanceList initialInstances = new InstanceList (new SerialPipes(standardPipeList));
 
-        Reader fileReader = new InputStreamReader(new FileInputStream(new File(inputFileName)), "UTF-8");
-        initialInstances.addThruPipe(new CsvIterator(fileReader, Pattern.compile("^(\\S*)[\\s,]*(\\S*)[\\s,]*(.*)$"),
-                3, 2, 1)); // data, label, name fields
-        fileReader.close();
+        initialInstances.addThruPipe(inputIterator1);
 
 
         // Create the final instanceList which contains no words which are in less than 10 tweets.
@@ -188,9 +194,7 @@ public class TopicModelBuilder {
         prunedPipeList.add(new TokenSequence2FeatureSequence());
 
         InstanceList prunedInstances = new InstanceList (new SerialPipes(prunedPipeList));
-        fileReader = new InputStreamReader(new FileInputStream(new File(inputFileName)), "UTF-8");
-        prunedInstances.addThruPipe(new CsvIterator(fileReader, Pattern.compile("^(\\S*)[\\s,]*(\\S*)[\\s,]*(.*)$"),
-                3, 2, 1)); // data, label, name fields
+        prunedInstances.addThruPipe(inputIterator2);
         // TODO: sort words after frequencies and add most common to stop word list
         List<Map.Entry<String, Integer>> wordFrequenciesList = new LinkedList<Map.Entry<String, Integer>>(wordFrequencies.entrySet());
         Collections.sort(wordFrequenciesList, new Comparator<Map.Entry<String, Integer>>() {
@@ -199,9 +203,17 @@ public class TopicModelBuilder {
                 return o2.getValue().compareTo(o1.getValue());
             }
         });
-        writeWordFrequenciesToCsv(filePrefix, wordFrequenciesList);
-        fileReader.close();
+
+        if(writeFrequencies) writeWordFrequenciesToCsv(filePrefix, wordFrequenciesList);
         return prunedInstances;
+    }
+
+    private static InstanceList createInstanceList(Iterator<Instance> inputIterator1, Iterator<Instance> inputIterator2, String filePrefix) throws IOException {
+        return createInstanceList(inputIterator1, inputIterator2, filePrefix, true);
+    }
+
+    public static InstanceList createInstanceList(Iterator<Instance> inputIterator1, Iterator<Instance> inputIterator2) throws IOException {
+        return createInstanceList(inputIterator1, inputIterator2, "", false);
     }
 
     private static void writeWordFrequenciesToCsv(String filePrefix, List<Map.Entry<String,Integer>> wordFrequenciesList) throws IOException {
