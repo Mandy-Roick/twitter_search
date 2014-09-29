@@ -47,6 +47,14 @@ public class DBManager {
         createTweet(tweet);
     }
 
+    public void writeTweetForEvalToDB(Status tweet, String topic) {
+        if (tweetDoesExist(tweet.getId())) {
+            updateTweetForEval(tweet, topic);
+        } else {
+            createTweetForEval(tweet, topic);
+        }
+    }
+
     private boolean tweetDoesExist(long tweetId) {
         boolean doesExist = false;
         try {
@@ -120,6 +128,23 @@ public class DBManager {
         }
     }
 
+    private void updateTweetForEval(Status tweet, String topic) {
+        try {
+            PreparedStatement statement = connection.prepareStatement("" +
+                    "UPDATE mandy_masterarbeit.twitter_tweet " +
+                    "SET evaluation_flag = ? " +
+                    "WHERE id = ?");
+
+            statement.setString(1, topic);
+            statement.setLong(2, tweet.getId());
+
+            statement.execute();
+            statement.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void createTweet(Status tweet) {
         try {
             PreparedStatement statement = connection.prepareStatement("" +
@@ -154,6 +179,51 @@ public class DBManager {
                 statement.setNull(11, Types.DOUBLE);
                 statement.setNull(12, Types.DOUBLE);
             }
+
+            statement.execute();
+            statement.close();
+        } catch (SQLException e) {
+            System.out.println("Tweet could not be saved to DB for Tweet " + tweet.getText());
+            e.printStackTrace();
+        }
+    }
+
+    private void createTweetForEval(Status tweet, String topic) {
+        try {
+            PreparedStatement statement = connection.prepareStatement("" +
+                    "INSERT INTO mandy_masterarbeit.twitter_tweet(id, content, user_id, created_at, reply_id, " +
+                    "language, retweeted, retweeted_id, truncated, place_id, coordinates_x, coordinates_y, evaluation_flag)" +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? , ?, ?)");
+
+            statement.setLong(1, tweet.getId());
+            statement.setString(2, tweet.getText());
+            statement.setLong(3, tweet.getUser().getId());
+            java.sql.Date sqlDate = new Date(tweet.getCreatedAt().getTime());
+            statement.setDate(4, sqlDate);
+            statement.setLong(5, tweet.getInReplyToStatusId());
+            statement.setString(6, tweet.getLang());
+
+            statement.setBoolean(7, tweet.isRetweet());
+            if (tweet.isRetweet()) {
+                statement.setLong(8, tweet.getRetweetedStatus().getId());
+            } else {
+                statement.setNull(8, Types.BIGINT);
+            }
+            statement.setBoolean(9, tweet.isTruncated());
+            if (tweet.getPlace() == null) {
+                statement.setNull(10, Types.VARCHAR);
+            } else {
+                statement.setString(10, tweet.getPlace().getId());
+            }
+            if (tweet.getGeoLocation() != null) {
+                statement.setDouble(11, tweet.getGeoLocation().getLongitude());
+                statement.setDouble(12, tweet.getGeoLocation().getLatitude());
+            } else {
+                statement.setNull(11, Types.DOUBLE);
+                statement.setNull(12, Types.DOUBLE);
+            }
+
+            statement.setString(13, topic);
 
             statement.execute();
             statement.close();
@@ -395,4 +465,58 @@ public class DBManager {
         return tweetsUrls;
     }
 
+    public Long selectHighestIdFromDate(String date) {
+        Long highestId = null;
+        try {
+            Statement statement = connection.createStatement();
+            ResultSet result = statement.executeQuery("Select MAX(id) from mandy_masterarbeit.twitter_tweet Where created_at = '" + date + "'");
+
+            if(result.next()) {
+                highestId = result.getLong(1);
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return highestId;
+    }
+
+    public Map<Long,String> selectTweetsAboveID(Long startingID) {
+        Map<Long, String> tweetIdToContent = new HashMap<Long, String>();
+        try {
+            Statement statement = connection.createStatement();
+            ResultSet result = statement.executeQuery("SELECT id, content FROM mandy_masterarbeit.twitter_tweet " +
+                    "WHERE id > " + startingID + "");
+
+            while(result.next()) {
+                long tweetId = result.getLong(1);
+                String tweetContent = result.getString(2);
+                tweetIdToContent.put(tweetId, tweetContent);
+            }
+
+            statement.close();
+        } catch (SQLException e) {
+            System.out.println("Could not select tweets from DB which are above id: " + startingID + "!");
+            e.printStackTrace();
+        }
+        return tweetIdToContent;
+    }
+
+    public Long selectHighestIdFromUser(Long userId) {
+        Long highestId = null;
+        try {
+            Statement statement = connection.createStatement();
+            ResultSet result = statement.executeQuery("Select MAX(id) from mandy_masterarbeit.twitter_tweet Where user_id = '" + userId + "'");
+
+            if(result.next()) {
+                highestId = result.getLong(1);
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return highestId;
+    }
 }
