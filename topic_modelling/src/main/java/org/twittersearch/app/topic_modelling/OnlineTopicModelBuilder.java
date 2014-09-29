@@ -1,6 +1,7 @@
 package org.twittersearch.app.topic_modelling;
 
 import cc.mallet.pipe.iterator.ArrayIterator;
+import cc.mallet.pipe.iterator.CsvIterator;
 import cc.mallet.types.FeatureSequence;
 import cc.mallet.types.Instance;
 import cc.mallet.types.InstanceList;
@@ -11,11 +12,9 @@ import vagueobjects.ir.lda.tokens.Documents;
 import vagueobjects.ir.lda.tokens.PlainVocabulary;
 import vagueobjects.ir.lda.tokens.Vocabulary;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.io.*;
+import java.util.*;
+import java.util.regex.Pattern;
 
 /**
  * Created by Mandy Roick on 11.09.2014.
@@ -28,14 +27,20 @@ public class OnlineTopicModelBuilder {
     private static final double alpha = 1.d/ numOfTopics;
     private static final double eta = 1.d/ numOfTopics;
     private OnlineLDA ldaModel;
+    private String startingDate;
 
     public static void main(String[] args) {
-        OnlineTopicModelBuilder.initializeTopicModel("2014-09-22");
+        String startDate = "2014-09-23";
+        OnlineTopicModelBuilder oTMB = new OnlineTopicModelBuilder(startDate);
+        oTMB.updateTopicModel();
+
         //learnTopicModel();
     }
 
+
     public OnlineTopicModelBuilder(String startingDate) {
-        ldaModel = OnlineTopicModelBuilder.initializeTopicModel(startingDate);
+        this.ldaModel = OnlineTopicModelBuilder.initializeTopicModel(startingDate);
+        this.startingDate = startingDate;
     }
 
     private static void learnTopicModel() {
@@ -71,7 +76,7 @@ public class OnlineTopicModelBuilder {
     }
 
     public static OnlineLDA initializeTopicModel(String date) {
-        int batchSize = 262144;
+        int batchSize = 100000;//262144;
 
         try {
 
@@ -105,17 +110,29 @@ public class OnlineTopicModelBuilder {
     }
 
     private static InstanceList createInstanceList(String date) throws IOException{
-        DBManager dbManager = new DBManager();
+        //DBManager dbManager = new DBManager();
 
-        Map<Long, String> tweetIdsToContent = dbManager.selectTweetsCreatedAt(date);
-        Map<Long, List<String>> tweetsHashtags = dbManager.selectTweetsAndHashtagsCreatedAt(date);
+        //Map<Long, String> tweetIdsToContent = dbManager.selectTweetsCreatedAt(date);
+        //Map<Long, List<String>> tweetsHashtags = dbManager.selectTweetsAndHashtagsCreatedAt(date);
 
-        TweetPreprocessor tweetPreprocessor = new TweetPreprocessor();
-        Map<Long, String> preprocessedTweets = tweetPreprocessor.preprocessTweets(tweetIdsToContent, tweetsHashtags);
+        //TweetPreprocessor tweetPreprocessor = new TweetPreprocessor();
+        //Map<Long, String> preprocessedTweets = tweetPreprocessor.preprocessTweets(tweetIdsToContent, tweetsHashtags);
 
-        List preprocessedTweetContents = new ArrayList(preprocessedTweets.values());
+        //List preprocessedTweetContents = new ArrayList(preprocessedTweets.values());
 
-        return TopicModelBuilder.createInstanceList(new ArrayIterator(preprocessedTweetContents), new ArrayIterator(preprocessedTweetContents));
+        String inputFileName = "mallet_input_file_" + date + ".csv";
+        MalletInputFileCreator malletInputFileCreator = new MalletInputFileCreator(date);
+        malletInputFileCreator.writeDBContentToInputFile(inputFileName);
+
+        Reader fileReader1 = new InputStreamReader(new FileInputStream(new File(inputFileName)), "UTF-8");
+        Reader fileReader2 = new InputStreamReader(new FileInputStream(new File(inputFileName)), "UTF-8");
+        Iterator<Instance> inputIterator1 =  new CsvIterator(fileReader1, Pattern.compile("^(\\S*)[\\s,]*(\\S*)[\\s,]*(.*)$"), 3, 2, 1); // data, label, name fields
+        Iterator<Instance> inputIterator2 =  new CsvIterator(fileReader2, Pattern.compile("^(\\S*)[\\s,]*(\\S*)[\\s,]*(.*)$"), 3, 2, 1); // data, label, name fields
+        InstanceList instances = TopicModelBuilder.createInstanceList(inputIterator1, inputIterator2);
+        fileReader1.close();
+        fileReader2.close();
+
+        return instances;
     }
 
     private static List<String> createDocumentsList(InstanceList instances) {
@@ -131,7 +148,10 @@ public class OnlineTopicModelBuilder {
         return documents;
     }
 
-    private static void updateTopicModel(List<Long> tweetIds) {
+    private void updateTopicModel() {
+        DBManager dbManager = new DBManager();
+        Long highestIdFromStartingDate = dbManager.selectHighestIdFromDate(this.startingDate);
+        Map<Long, String> newTweets = dbManager.selectTweetsAboveID(highestIdFromStartingDate);
 
     }
 }

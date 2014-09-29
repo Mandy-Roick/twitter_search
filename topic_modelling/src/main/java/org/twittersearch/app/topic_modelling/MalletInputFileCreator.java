@@ -33,7 +33,7 @@ public class MalletInputFileCreator {
         this.splitHashtags = new Object2ObjectOpenHashMap<String, String[]>();
     }
 
-    private void writeDBContentToInputFile(String filePath) {
+    public void writeDBContentToInputFile(String filePath) {
         Map<Long, String> tweetIdsToContent = this.dbManager.selectTweetsCreatedAt(this.date);
         Map<Long, List<String>> tweetsHashtags = this.dbManager.selectTweetsAndHashtagsCreatedAt(this.date);
 
