@@ -18,6 +18,7 @@ import java.util.List;
 public class UserCrawler {
 
     private TwitterApiCustodian twitterApiCustodian;
+    private DBManager dbManager;
 
     public static void main(String[] args) {
         String userIdsFileName = "input_data/userIds_politics.csv";
@@ -29,23 +30,33 @@ public class UserCrawler {
             System.out.println("First argument should be filename of csv containing user ids. Now using filename: " + userIdsFileName);
         }
 
+        crawler.crawlUsers(userIdsFileName);
+
+    }
+
+    public void crawlUsers(String userIdsFileName) {
         try {
             CSVReader csvReader = new CSVReader(new FileReader(userIdsFileName), '\t', '\"', 1);
             List<String[]> users = csvReader.readAll();
 
+            Long currentUserId;
+            Long highestCrawledId;
+
             for (String[] user : users) {
-                crawler.crawlAllUserTweets(Long.parseLong(user[1]), 1L, user[2]);
+                currentUserId = Long.parseLong(user[1]);
+                highestCrawledId = dbManager.selectHighestIdFromUser(currentUserId);
+                crawlAllUserTweets(currentUserId, highestCrawledId, user[2]);
             }
 
         } catch (IOException e) {
             System.out.println("Could not read CSV input file.");
             e.printStackTrace();
         }
-
     }
 
     public UserCrawler() {
         this.twitterApiCustodian = TwitterApiCustodian.getInstance();
+        this.dbManager = new DBManager();
     }
 
     /***    According to example by Maximilian Jenders
@@ -88,14 +99,13 @@ public class UserCrawler {
             }
         }
 
-        DBManager dbManager = new DBManager();
         for (Status status : collectedStatuses) {
             if (status.getLang().equals("en")) {
-                dbManager.writeTweetForEvalToDB(status, topic);
+                this.dbManager.writeTweetForEvalToDB(status, topic);
             }
         }
 
-        System.out.println("Done with User: " + userID);
+        System.out.println("Done with User: " + userID + ", number of tweets collected: " + collectedStatuses.size());
     }
 
     /***
