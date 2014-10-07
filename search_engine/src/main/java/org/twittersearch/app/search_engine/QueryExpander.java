@@ -1,6 +1,8 @@
-package org.twittersearch.app.topic_modelling;
+package org.twittersearch.app.search_engine;
 
 import au.com.bytecode.opencsv.CSVReader;
+import org.twittersearch.app.topic_modelling.StemmerPipe;
+import org.twittersearch.app.topic_modelling.TweetPreprocessor;
 
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -9,19 +11,21 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.twittersearch.app.topic_modelling.StemmerPipe.*;
+
 /**
  * Created by Mandy Roick on 20.08.2014.
  */
 public class QueryExpander {
-    private static int numOfTopicsForExpansion = 5;
-    private static int numOfTopWordsPerTopic = 10;
+    private static int numOfTopicsForExpansion = 3;
+    private static int numOfTopWordsPerTopic = 3;
 
     public static void main(String[] args) {
         String[] expandedQuery;
         if (args.length == 1 ) {
             expandedQuery = expand(args[1]);
         } else {
-            expandedQuery = expand("Politics");
+            expandedQuery = expand("china");
         }
 
         for (String queryElement : expandedQuery) {
@@ -35,8 +39,8 @@ public class QueryExpander {
         String[] splitQuery = splitQuery(preprocessedQuery);
         String[] postprocessedQuery = postprocessQuery(splitQuery);
 
-        Map<String, String[]> typeTopicCounts = readTopicModel("trimmed_tm-200_2014-09-16_type_topic_counts.results");
-        Map<Integer, String[]> topWords = readTopWords("trimmed_tm-200_2014-09-16_top_words.results");
+        Map<String, String[]> typeTopicCounts = readTopicModel("trimmed_tm-200_2014-10-04_type_topic_counts.results");
+        Map<Integer, String[]> topWords = readTopWords("trimmed_tm-200_2014-10-04_top_words.results");
 
         String[] expandedQuery = expandThroughTopicModel(postprocessedQuery, typeTopicCounts, topWords);
 
@@ -118,7 +122,7 @@ public class QueryExpander {
         String[] postprocessedQuery = new String[splitQuery.length];
 
         for (int i = 0; i < splitQuery.length; i++) {
-            postprocessedQuery[i] = StemmerPipe.stem(splitQuery[i]);
+            postprocessedQuery[i] = stem(splitQuery[i]);
         }
         return postprocessedQuery;
     }
