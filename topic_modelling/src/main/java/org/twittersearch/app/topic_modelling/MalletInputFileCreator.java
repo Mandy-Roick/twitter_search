@@ -17,31 +17,27 @@ import java.util.Map;
 public class MalletInputFileCreator {
 
     DBManager dbManager;
-    Object2ObjectMap<String, String[]> splitHashtags;
-    //Map<Long, List<String>> tweetsHashtags;
     String date;
 
     public static void main(String[] args) {
-        String date = "2014-09-16";
-        MalletInputFileCreator malletInputFileCreator = new MalletInputFileCreator(date);
-        malletInputFileCreator.writeDBContentToInputFile("mallet_input_file_" + date + ".csv");
+        String date = "2014-10-09";
+        MalletInputFileCreator.writeDBContentToInputFile("mallet_input_file_" + date + ".csv", date);
     }
 
-    public MalletInputFileCreator(String date) {
-        this.date = date;
-        this.dbManager = new DBManager();
-        this.splitHashtags = new Object2ObjectOpenHashMap<String, String[]>();
+    public static void writeDBContentToInputFile(String filePath, String date) {
+        DBManager dbManager = new DBManager();
+        Map<Long, String> tweetIdsToContent = dbManager.selectTweetsCreatedAt(date);
+        Map<Long, List<String>> tweetsHashtags = dbManager.selectTweetsAndHashtagsCreatedAt(date);
+
+        MalletInputFileCreator.writeTweetsToInputFile(filePath, tweetIdsToContent, tweetsHashtags);
     }
 
-    public void writeDBContentToInputFile(String filePath) {
-        Map<Long, String> tweetIdsToContent = this.dbManager.selectTweetsCreatedAt(this.date);
-        Map<Long, List<String>> tweetsHashtags = this.dbManager.selectTweetsAndHashtagsCreatedAt(this.date);
-
+    public static void writeTweetsToInputFile(String fileName, Map<Long, String> tweets, Map<Long, List<String>> tweetsHashtags) {
         TweetPreprocessor tweetPreprocessor = new TweetPreprocessor();
-        Map<Long, String> preprocessedTweets = tweetPreprocessor.preprocessTweets(tweetIdsToContent, tweetsHashtags);
+        Map<Long, String> preprocessedTweets = tweetPreprocessor.preprocessTweets(tweets, tweetsHashtags);
 
         try {
-            CSVWriter csvWriter = new CSVWriter(new FileWriter(filePath), '\t', '\"');
+            CSVWriter csvWriter = new CSVWriter(new FileWriter(fileName), '\t', '\"');
             String[] line = new String[3];
             int counter = 1;
             for (Map.Entry<Long, String> entry : preprocessedTweets.entrySet()) {
