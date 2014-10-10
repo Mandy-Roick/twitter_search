@@ -1,5 +1,7 @@
 package org.twittersearch.app.topic_modelling;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -8,16 +10,19 @@ import java.util.Map;
 public class OnlineLDAExtensionTopic {
 
     protected double topicScore;
-    protected Map<String, Double> wordCounts;
+    //protected Map<String, Double> wordCounts;
+    protected List<String> topWords;
 
-    public OnlineLDAExtensionTopic(double topicScore, Map<String, Double> wordCounts) {
+    public OnlineLDAExtensionTopic(double topicScore, List<String> topWords) {
         this.topicScore = topicScore;
-        this.wordCounts = wordCounts;
+        //this.wordCounts = wordCounts;
+        this.topWords = topWords;
     }
 
-    public String toCsvString() {
+    public String toCsvString(int numberOfTopWords) {
         String csvString = String.valueOf(topicScore);
-        for(String word : wordCounts.keySet()) {
+        int counter = 0;
+        for(String word : topWords.subList(0, numberOfTopWords)) {
             csvString += "\t" + word;
         }
         return csvString;

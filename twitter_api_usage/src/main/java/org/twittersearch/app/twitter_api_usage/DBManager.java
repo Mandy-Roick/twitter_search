@@ -15,7 +15,7 @@ import java.util.Map;
 public class DBManager {
     private Connection connection;
 
-    private String password = "";
+    private String password = ""; //"";
     private String user = "";
 
     public DBManager() {
@@ -25,7 +25,8 @@ public class DBManager {
     public void connect() {
         try {
             connection = DriverManager.getConnection(
-                            "jdbc:postgresql://isfet.hpi.uni-potsdam.de:5432/max?searchpath=mandy_masterarbeit",
+                            //"jdbc:postgresql://isfet.hpi.uni-potsdam.de:5432/max?searchpath=mandy_masterarbeit",
+                            "jdbc:postgresql://seschat.hpi.uni-potsdam.de:5432/roick?searchpath=mandy_masterarbeit",
                             this.user, this.password);
         } catch (SQLException e) {
             System.out.println("Could not connect to PostgreSQL-Database.");
@@ -466,7 +467,7 @@ public class DBManager {
     }
 
     public Long selectHighestIdFromDate(String date) {
-        Long highestId = null;
+        Long highestId = 1L;
         try {
             Statement statement = connection.createStatement();
             ResultSet result = statement.executeQuery("Select MAX(id) from mandy_masterarbeit.twitter_tweet Where created_at = '" + date + "'");
@@ -504,7 +505,7 @@ public class DBManager {
     }
 
     public Long selectHighestIdFromUser(Long userId) {
-        Long highestId = null;
+        Long highestId = 1L;
         try {
             Statement statement = connection.createStatement();
             ResultSet result = statement.executeQuery("Select MAX(id) from mandy_masterarbeit.twitter_tweet Where user_id = '" + userId + "'");
@@ -518,5 +519,30 @@ public class DBManager {
         }
 
         return highestId;
+    }
+
+    public Map<Long,  List<String>> selectTweetsHashtagsAboveID(Long startingID) {
+        Map<Long,  List<String>> tweetsHashtags = new HashMap<Long,  List<String>>();
+        try {
+            Statement statement = connection.createStatement();
+            ResultSet result = statement.executeQuery("SELECT tweet,hashtag FROM " +
+                    "mandy_masterarbeit.twitter_tweet_hashtag WHERE tweet > " + startingID + "");
+
+            while(result.next()) {
+                Long tweetId = result.getLong(1);
+                List<String> hashtags = tweetsHashtags.get(tweetId);
+                if(hashtags == null) {
+                    hashtags = new LinkedList<String>();
+                }
+                hashtags.add(result.getString(2));
+                tweetsHashtags.put(tweetId, hashtags);
+            }
+
+            statement.close();
+        } catch (SQLException e) {
+            System.out.println("Could not select tweets from DB which are above id: " + startingID + "!");
+            e.printStackTrace();
+        }
+        return tweetsHashtags;
     }
 }

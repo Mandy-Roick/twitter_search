@@ -69,10 +69,10 @@ public class TwitterManager
 
 		ConfigurationBuilder cb = new ConfigurationBuilder();
     	cb.setDebugEnabled(true)
-    	  .setOAuthConsumerKey("n5gjzGruXQcBlwZJ0Kj4UXyY7")
-    	  .setOAuthConsumerSecret("tt35SEi66TDinub7lLcdewYAlv7G6tcOfDVzme5kKCQXRWGalb")
-    	  .setOAuthAccessToken("2446857775-Ttl3gXob0CVO6Z0O7kHT5nM02DqG0krvzNJlyjZ")
-    	  .setOAuthAccessTokenSecret("oEhkZmQ65NFHmPbMZwgZfYJTpuqQ2V1XX1yJt6Tge28nF");
+    	  .setOAuthConsumerKey("D3MEE6QLl84kjBvwcZHJPGrQd")
+    	  .setOAuthConsumerSecret("z3h1jDLgSeePp6uvAtaWwNzct44M2HPoRQ04RrHu94x8TK926a")
+    	  .setOAuthAccessToken("2446857775-GoHn9OaBR6IS5nmvqBPzk6tO2UTWJiftwL9bOXI")
+    	  .setOAuthAccessTokenSecret("cw4gnG4guCdBocWGfLRAjMdpyrVKCeQTVdcksFyz9jJLo");
         TwitterStream twitterStream = new TwitterStreamFactory(cb.build()).getInstance();
 
         TweetListener listener = new TweetListener();

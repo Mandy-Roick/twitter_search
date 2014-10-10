@@ -151,7 +151,6 @@ public class OnlineLDAExtension {
         return new OnlineLDAExtensionResult(docs, D, bound, lambda);
     }
 
-
     double approxBound( Documents docs) {
         int[][] wordIds = docs.getTokenIds();
         int[][] wordCts = docs.getTokenCts();

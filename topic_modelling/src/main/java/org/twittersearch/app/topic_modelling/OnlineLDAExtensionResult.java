@@ -25,10 +25,14 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 Adapted by Mandy Roick on 07.10.2014.
 */
 
+import au.com.bytecode.opencsv.CSVWriter;
 import vagueobjects.ir.lda.online.matrix.Matrix;
 import vagueobjects.ir.lda.online.matrix.Vector;
 import vagueobjects.ir.lda.tokens.Documents;
 
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.PrintWriter;
 import java.util.*;
 
 /**
@@ -103,24 +107,39 @@ public class OnlineLDAExtensionResult {
         return new ArrayList<OnlineLDAExtensionTuple>(tuples);
     }
 
-    public List<OnlineLDAExtensionTopic> topicScoresAndTopWords(int numberOfTopWords) {
+    public List<OnlineLDAExtensionTopic> topicScoresAndTopWords() {
         List<OnlineLDAExtensionTopic> result = new LinkedList<OnlineLDAExtensionTopic>();
 
         Vector topicScores = lambda.sumByRows();
         double topicScore;
         Collection<OnlineLDAExtensionTuple> topWordTuples;
-        Map<String, Double> topWords;
+        List<String> topWords;
         for (int i = 0; i < topicScores.getLength(); i++) {
             topicScore = topicScores.elementAt(i);
 
             topWordTuples = this.sortTopicTerms(lambda.getRow(i));
-            topWords = new HashMap<String, Double>();
+            topWords = new ArrayList<String>();
             for (OnlineLDAExtensionTuple topWordTuple : topWordTuples) {
-                topWords.put(topWordTuple.getToken(documents), topWordTuple.getValue());
+                topWords.add(topWordTuple.getToken(documents));
             }
 
             result.add(new OnlineLDAExtensionTopic(topicScore, topWords));
         }
         return result;
+    }
+
+    public void writeToCsv(String fileName, int numberOfTopWords) {
+
+        try {
+            PrintWriter csvWriter = new PrintWriter(fileName);
+
+            for (OnlineLDAExtensionTopic topic : topicScoresAndTopWords()) {
+                csvWriter.println(topic.toCsvString(numberOfTopWords));
+            }
+        } catch (FileNotFoundException e) {
+            System.out.println("Could not write result to file with filename: " + fileName);
+            e.printStackTrace();
+        }
+
     }
 }

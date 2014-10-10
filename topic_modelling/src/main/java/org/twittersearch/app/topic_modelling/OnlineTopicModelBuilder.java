@@ -23,23 +23,43 @@ public class OnlineTopicModelBuilder {
 
     private static final int numOfTopics = 200;
     private static final double tau = 1d;
-    private static final double kappa = 0.d;//0.8d;
+    private static final double kappa = 0.8d;
     private static final double alpha = 1.d/ numOfTopics;
     private static final double eta = 1.d/ numOfTopics;
-    private OnlineLDA ldaModel;
+    private static final int batchSize = 100000;//262144;
+
+    private OnlineLDAExtension ldaModel;
+    private OnlineLDAExtensionResult currentResult;
     private String startingDate;
 
     public static void main(String[] args) {
-        String startDate = "2014-09-23";
+        String startDate = "2014-10-04";
         OnlineTopicModelBuilder oTMB = new OnlineTopicModelBuilder(startDate);
-        oTMB.updateTopicModel();
+        oTMB.writeCurrentResultToCsv(startDate + "_online_lda_result.csv");
+        System.out.println("Done with date: " + startDate);
+
+        updateLDA("2014-10-05", oTMB);
+        updateLDA("2014-10-06", oTMB);
+        updateLDA("2014-10-07", oTMB);
+        updateLDA("2014-10-08", oTMB);
+        updateLDA("2014-10-09", oTMB);
+        //updateLDA("2014-10-10", oTMB);
 
         //learnTopicModel();
     }
 
+    private static void updateLDA(String date, OnlineTopicModelBuilder oTMB) {
+        oTMB.updateTopicModelByDate(date);
+        oTMB.writeCurrentResultToCsv(date + "_online_lda_result.csv");
+        System.out.println("--------------------------- Done with date: " + date + " --------------------------------");
+    }
+
+    private void writeCurrentResultToCsv(String fileName) {
+        this.currentResult.writeToCsv(fileName, 20);
+    }
 
     public OnlineTopicModelBuilder(String startingDate) {
-        this.ldaModel = OnlineTopicModelBuilder.initializeTopicModel(startingDate);
+        initializeTopicModel(startingDate);
         this.startingDate = startingDate;
     }
 
@@ -53,63 +73,47 @@ public class OnlineTopicModelBuilder {
         double alpha = 1.d/ numOfTopics;
         double eta = 1.d/ numOfTopics;
 
-        try {
-            InstanceList instances = createInstanceList(dateSuffix);
-            List<String> documents = createDocumentsList(instances);
+        InstanceList instances = createInstanceList(dateSuffix);
+        List<String> documents = createDocumentsList(instances);
 
-            String[] malletDataAlphabet = (String[]) instances.getDataAlphabet().toArray(new String[instances.getDataAlphabet().size()]);
-            Vocabulary vocabulary = new PlainVocabulary(Arrays.asList(malletDataAlphabet));
-            OnlineLDA lda = new OnlineLDA(vocabulary.size(), numOfTopics, instances.size(), alpha, eta, tau, kappa);
+        String[] malletDataAlphabet = (String[]) instances.getDataAlphabet().toArray(new String[instances.getDataAlphabet().size()]);
+        Vocabulary vocabulary = new PlainVocabulary(Arrays.asList(malletDataAlphabet));
+        OnlineLDAExtension lda = new OnlineLDAExtension(vocabulary.size(), numOfTopics, instances.size(), alpha, eta, tau, kappa);
 
-            for (int i = 0; i*batchSize < documents.size(); ++i) {
-                int max = Math.min((i+1)*batchSize,documents.size());
-                Documents onlineLDADocuments = new Documents(documents.subList(i*batchSize, max), vocabulary);
-                Result result = lda.workOn(onlineLDADocuments);
-                System.out.println(result);
-            }
-
-        } catch (IOException e) {
-            System.out.println("Could not read instances.");
-            e.printStackTrace();
+        for (int i = 0; i*batchSize < documents.size(); ++i) {
+            int max = Math.min((i+1)*batchSize,documents.size());
+            Documents onlineLDADocuments = new Documents(documents.subList(i*batchSize, max), vocabulary);
+            OnlineLDAExtensionResult result = lda.workOn(onlineLDADocuments);
+            System.out.println(result);
         }
 
     }
 
-    public static OnlineLDA initializeTopicModel(String date) {
-        int batchSize = 100000;//262144;
+    public void initializeTopicModel(String date) {
+        System.out.println("Create Instance List.");
+        String inputFileName = "mallet_input_file_" + date + ".csv";
+        MalletInputFileCreator.writeDBContentToInputFile(inputFileName, date);
+        InstanceList instances = createInstanceList(inputFileName);
+                //TopicModelBuilder.createInstanceList(inputFileName, filePrefix); //fileprefix is needed for writing the wordfrequencies to file
 
-        try {
+        System.out.println("Create Documents List.");
+        List<String> documents = createDocumentsList(instances);
 
-            System.out.println("Create Instance List.");
-            InstanceList instances = createInstanceList(date);
-                    //TopicModelBuilder.createInstanceList(inputFileName, filePrefix); //fileprefix is needed for writing the wordfrequencies to file
+        String[] malletDataAlphabet = (String[]) instances.getDataAlphabet().toArray(new String[instances.getDataAlphabet().size()]);
+        Vocabulary vocabulary = new PlainVocabulary(Arrays.asList(malletDataAlphabet));
+        this.ldaModel = new OnlineLDAExtension(vocabulary.size(), numOfTopics, instances.size(), alpha, eta, tau, kappa);
 
-            System.out.println("Create Documents List.");
-            List<String> documents = createDocumentsList(instances);
-
-            String[] malletDataAlphabet = (String[]) instances.getDataAlphabet().toArray(new String[instances.getDataAlphabet().size()]);
-            Vocabulary vocabulary = new PlainVocabulary(Arrays.asList(malletDataAlphabet));
-            OnlineLDA lda = new OnlineLDA(vocabulary.size(), numOfTopics, instances.size(), alpha, eta, tau, kappa);
-
-            for (int i = 0; i*batchSize < documents.size(); ++i) {
-                System.out.println("Work on Batch number " + i + ".");
-                int max = Math.min((i+1)*batchSize,documents.size());
-                Documents onlineLDADocuments = new Documents(documents.subList(i*batchSize, max), vocabulary);
-                Result result = lda.workOn(onlineLDADocuments);
-                System.out.println(result);
-            }
-
-            return lda;
-
-        } catch (IOException e) {
-            System.out.println("Could not read instances.");
-            e.printStackTrace();
+        for (int i = 0; i*batchSize < documents.size(); ++i) {
+            System.out.println("Work on Batch number " + i + ".");
+            int max = Math.min((i+1)*batchSize,documents.size());
+            Documents onlineLDADocuments = new Documents(documents.subList(i*batchSize, max), vocabulary);
+            this.currentResult = this.ldaModel.workOn(onlineLDADocuments);
+            //System.out.println(this.currentResult);
         }
 
-        return null;
     }
 
-    private static InstanceList createInstanceList(String date) throws IOException{
+    private static InstanceList createInstanceList(String inputFileName) {
         //DBManager dbManager = new DBManager();
 
         //Map<Long, String> tweetIdsToContent = dbManager.selectTweetsCreatedAt(date);
@@ -120,19 +124,23 @@ public class OnlineTopicModelBuilder {
 
         //List preprocessedTweetContents = new ArrayList(preprocessedTweets.values());
 
-        String inputFileName = "mallet_input_file_" + date + ".csv";
-        MalletInputFileCreator malletInputFileCreator = new MalletInputFileCreator(date);
-        malletInputFileCreator.writeDBContentToInputFile(inputFileName);
+        try {
+            Reader fileReader1 = new InputStreamReader(new FileInputStream(new File(inputFileName)), "UTF-8");
+            Reader fileReader2 = new InputStreamReader(new FileInputStream(new File(inputFileName)), "UTF-8");
+            Iterator<Instance> inputIterator1 =  new CsvIterator(fileReader1, Pattern.compile("^(\\S*)[\\s,]*(\\S*)[\\s,]*(.*)$"), 3, 2, 1); // data, label, name fields
+            Iterator<Instance> inputIterator2 =  new CsvIterator(fileReader2, Pattern.compile("^(\\S*)[\\s,]*(\\S*)[\\s,]*(.*)$"), 3, 2, 1); // data, label, name fields
+            InstanceList instances = TopicModelBuilder.createInstanceList(inputIterator1, inputIterator2);
+            fileReader1.close();
+            fileReader2.close();
 
-        Reader fileReader1 = new InputStreamReader(new FileInputStream(new File(inputFileName)), "UTF-8");
-        Reader fileReader2 = new InputStreamReader(new FileInputStream(new File(inputFileName)), "UTF-8");
-        Iterator<Instance> inputIterator1 =  new CsvIterator(fileReader1, Pattern.compile("^(\\S*)[\\s,]*(\\S*)[\\s,]*(.*)$"), 3, 2, 1); // data, label, name fields
-        Iterator<Instance> inputIterator2 =  new CsvIterator(fileReader2, Pattern.compile("^(\\S*)[\\s,]*(\\S*)[\\s,]*(.*)$"), 3, 2, 1); // data, label, name fields
-        InstanceList instances = TopicModelBuilder.createInstanceList(inputIterator1, inputIterator2);
-        fileReader1.close();
-        fileReader2.close();
+            return instances;
 
-        return instances;
+        } catch (IOException e) {
+            System.out.println("Could not read mallet input file while initializing.");
+            e.printStackTrace();
+        }
+
+        return null;
     }
 
     private static List<String> createDocumentsList(InstanceList instances) {
@@ -152,6 +160,45 @@ public class OnlineTopicModelBuilder {
         DBManager dbManager = new DBManager();
         Long highestIdFromStartingDate = dbManager.selectHighestIdFromDate(this.startingDate);
         Map<Long, String> newTweets = dbManager.selectTweetsAboveID(highestIdFromStartingDate);
+        Map<Long, List<String>> newTweetsHashtags = dbManager.selectTweetsHashtagsAboveID(highestIdFromStartingDate);
+
+        //create mallet input file or at least normalize tweets
+        String inputFileName = "mallet_input_file_starting_id_" + highestIdFromStartingDate + ".csv"; //Instead of writing to file, probably use a StringBuilder
+        MalletInputFileCreator.writeTweetsToInputFile(inputFileName, newTweets, newTweetsHashtags);
+        InstanceList instances = createInstanceList(inputFileName);
+        List<String> documents = createDocumentsList(instances);
+
+        String[] malletDataAlphabet = (String[]) instances.getDataAlphabet().toArray(new String[instances.getDataAlphabet().size()]);
+        Vocabulary vocabulary = new PlainVocabulary(Arrays.asList(malletDataAlphabet));
+
+        for (int i = 0; i*batchSize < documents.size(); ++i) {
+            System.out.println("Work on Batch number " + i + ".");
+            int max = Math.min((i+1)*batchSize,documents.size());
+            Documents onlineLDADocuments = new Documents(documents.subList(i*batchSize, max), vocabulary);
+            this.currentResult = ldaModel.workOn(onlineLDADocuments);
+            //System.out.println(this.currentResult);
+        }
+
+    }
+
+
+    private void updateTopicModelByDate(String date) {
+        //create mallet input file or at least normalize tweets
+        String inputFileName = "mallet_input_file_" + date + ".csv";
+        MalletInputFileCreator.writeDBContentToInputFile(inputFileName, date);
+        InstanceList instances = createInstanceList(inputFileName);
+        List<String> documents = createDocumentsList(instances);
+
+        String[] malletDataAlphabet = (String[]) instances.getDataAlphabet().toArray(new String[instances.getDataAlphabet().size()]);
+        Vocabulary vocabulary = new PlainVocabulary(Arrays.asList(malletDataAlphabet));
+
+        for (int i = 0; i*batchSize < documents.size(); ++i) {
+            System.out.println("Work on Batch number " + i + ".");
+            int max = Math.min((i+1)*batchSize,documents.size());
+            Documents onlineLDADocuments = new Documents(documents.subList(i*batchSize, max), vocabulary);
+            this.currentResult = ldaModel.workOn(onlineLDADocuments);
+            //System.out.println(this.currentResult);
+        }
 
     }
 }
