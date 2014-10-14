@@ -33,10 +33,10 @@ public class TwitterManager
 		Query query = new Query(queryString);//source:twitter4j yusukey");
 	    QueryResult result = this.twitter.search(query);
 	    for (Status status : result.getTweets()) {
-	        System.out.println(status.getId() + " : @" + status.getUser().getScreenName() + ":" + status.getText() + " +Language: " + status.getLang());
+	        System.out.println(status.getId() + " : @" + status.getUser().getScreenName() + ":" + status.getText());// + " +Language: " + status.getLang());
 	    }
-	    Status tweet = this.twitter.showStatus(Long.parseLong("297136541426397184"));
-	    System.out.println("@" + tweet.getUser().getScreenName() + ":" + tweet.getText() + " +Language: " + tweet.getLang());
+	    //Status tweet = this.twitter.showStatus(Long.parseLong("297136541426397184"));
+	    //System.out.println("@" + tweet.getUser().getScreenName() + ":" + tweet.getText() + " +Language: " + tweet.getLang());
 	}
 	
 	public void openTweet(Long id) throws TwitterException {
