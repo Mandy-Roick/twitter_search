@@ -17,15 +17,15 @@ import java.util.regex.Pattern;
 public class TopicModelBuilder {
 
     public static void main(String[] args) {
-        learnTopicModel();
+        String date = "2014-10-10";
+        learnTopicModel(date);
     }
 
-    private static void learnTopicModel() {
-        String dateSuffix = "_2014-09-16";
-        String inputFileName = "mallet_input_file" + dateSuffix + ".csv";
+    public static void learnTopicModel(String date) {
+        String inputFileName = "mallet_input_file_" + date + ".csv";
 
         int numTopics = 200;
-        String filePrefix = "trimmed_tm-" + numTopics + dateSuffix;
+        String filePrefix = "trimmed_tm-" + numTopics + "_" + date;
 
         try {
 
@@ -45,9 +45,9 @@ public class TopicModelBuilder {
             model.setSymmetricAlpha(false);
             model.estimate();
 
-            model.printTopicWordWeights(new File(filePrefix + "_words.results"));
+            //model.printTopicWordWeights(new File(filePrefix + "_words.results"));
             model.printTypeTopicCounts(new File(filePrefix + "_type_topic_counts.results"));
-            model.printDocumentTopics(new File(filePrefix + "_document_topics.results"));
+            //model.printDocumentTopics(new File(filePrefix + "_document_topics.results"));
             //TopicModelDiagnostics tmd = new TopicModelDiagnostics(model,20);
             //TopicModelDiagnostics.TopicScores topicScores = tmd.getTokensPerTopic(model.tokensPerTopic);
             //double[] scores = topicScores.scores;
@@ -183,7 +183,8 @@ public class TopicModelBuilder {
         prunedPipeList.add(new CharSequenceLowercase());
         prunedPipeList.add(new CharSequence2TokenSequence(Pattern.compile("[#\\p{L}][\\p{L}\\p{Pd}\\p{M}']+\\p{L}")));
         prunedPipeList.add(mySqlStopWordsPipe);
-        prunedPipeList.add(new StemmerPipe());
+        StemmerPipe stemmer = new StemmerPipe();
+        prunedPipeList.add(stemmer);
 
         Map<String, Integer> wordFrequencies = getWordFrequencies(initialInstances);
         List<String> cutOffWords = getCutOffWords(wordFrequencies, 10);
@@ -195,7 +196,10 @@ public class TopicModelBuilder {
 
         InstanceList prunedInstances = new InstanceList (new SerialPipes(prunedPipeList));
         prunedInstances.addThruPipe(inputIterator2);
-        // TODO: sort words after frequencies and add most common to stop word list
+        Map<String, String> stemmingDictionary = stemmer.getFinalStemmingDictionary();
+        writeStemmingDictionaryFile(filePrefix, stemmingDictionary);
+
+        // sort words after frequencies and write to file if wanted
         List<Map.Entry<String, Integer>> wordFrequenciesList = new LinkedList<Map.Entry<String, Integer>>(wordFrequencies.entrySet());
         Collections.sort(wordFrequenciesList, new Comparator<Map.Entry<String, Integer>>() {
             @Override
@@ -206,6 +210,20 @@ public class TopicModelBuilder {
 
         if(writeFrequencies) writeWordFrequenciesToCsv(filePrefix, wordFrequenciesList);
         return prunedInstances;
+    }
+
+    private static void writeStemmingDictionaryFile(String filePrefix, Map<String, String> stemmingDictionary) {
+        File file = new File(filePrefix + "_stemming_dictionary.results");
+        try {
+            FileOutputStream fos = new FileOutputStream(file);
+            ObjectOutputStream oos = new ObjectOutputStream(fos);
+            oos.writeObject(stemmingDictionary);
+            oos.close();
+        } catch (IOException e) {
+            System.out.println("Could not write stemming dictionary to file.");
+            e.printStackTrace();
+        }
+
     }
 
     private static InstanceList createInstanceList(Iterator<Instance> inputIterator1, Iterator<Instance> inputIterator2, String filePrefix) throws IOException {

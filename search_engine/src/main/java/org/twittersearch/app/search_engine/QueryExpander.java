@@ -1,12 +1,11 @@
 package org.twittersearch.app.search_engine;
 
-import au.com.bytecode.opencsv.CSVReader;
-import org.twittersearch.app.topic_modelling.StemmerPipe;
+import org.twittersearch.app.helper.FileReaderHelper;
 import org.twittersearch.app.topic_modelling.TweetPreprocessor;
 
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -17,41 +16,73 @@ import static org.twittersearch.app.topic_modelling.StemmerPipe.*;
  * Created by Mandy Roick on 20.08.2014.
  */
 public class QueryExpander {
-    private static int numOfTopicsForExpansion = 3;
-    private static int numOfTopWordsPerTopic = 3;
 
     public static void main(String[] args) {
-        String[] expandedQuery;
+        int numOfTopicsForExpansion = 3;
+        int numOfTopWordsPerTopic = 3;
+        String date = "2014_10_04";
+        String[][] expandedQuery;
         if (args.length == 1 ) {
-            expandedQuery = expand(args[1]);
+            expandedQuery = expand(args[1], numOfTopicsForExpansion, numOfTopWordsPerTopic, date);
         } else {
-            expandedQuery = expand("china");
+            expandedQuery = expand("china", numOfTopicsForExpansion, numOfTopWordsPerTopic, date);
         }
 
-        for (String queryElement : expandedQuery) {
-            System.out.println(queryElement);
+        System.out.println("china");
+        for (String[] queryTopicElement : expandedQuery) {
+            for (String queryElement : queryTopicElement) {
+                System.out.println(queryElement);
+            }
+            System.out.println("");
         }
     }
 
-    public static String[] expand(String query) {
+    public static String[][] expand(String query, int numOfTopicsForExpansion, int numOfTopWordsPerTopic, String date) {
+        String filePrefix = "trimmed_tm-200_"+ date;
+
         // Process Query
         String preprocessedQuery = preprocessQuery(query);
         String[] splitQuery = splitQuery(preprocessedQuery);
         String[] postprocessedQuery = postprocessQuery(splitQuery);
 
-        Map<String, String[]> typeTopicCounts = readTopicModel("trimmed_tm-200_2014-10-04_type_topic_counts.results");
-        Map<Integer, String[]> topWords = readTopWords("trimmed_tm-200_2014-10-04_top_words.results");
+        Map<String, String[]> typeTopicCounts = FileReaderHelper.readTopicModel(filePrefix + "_type_topic_counts.results");
+        Map<Integer, String[]> topWords = FileReaderHelper.readTopWords(filePrefix + "_top_words.results");
 
-        String[] expandedQuery = expandThroughTopicModel(postprocessedQuery, typeTopicCounts, topWords);
+        String[][] expandedQuery = expandThroughTopicModel(postprocessedQuery, typeTopicCounts, topWords, numOfTopicsForExpansion, numOfTopWordsPerTopic);
+
+        try {
+            FileInputStream fis = new FileInputStream(filePrefix + "_stemming_dictionary.results");
+            ObjectInputStream ois = new ObjectInputStream(fis);
+            Map<String, String> stemmingDictionary = (Map<String, String>) ois.readObject();
+
+            String originalWord;
+            for (int i = 0; i < expandedQuery.length; i++) {
+                for (int j = 0; j < expandedQuery[i].length; j++) {
+                    originalWord = stemmingDictionary.get(expandedQuery[i][j]);
+                    if (originalWord != null) {
+                        expandedQuery[i][j] = originalWord;
+                    }
+                }
+            }
+        } catch (java.io.IOException e) {
+            System.out.println("Could not read stemming dictionary from file.");
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            System.out.println("Could not read stemming dictionary because of class incompatibilities.");
+            e.printStackTrace();
+        }
+
 
         return expandedQuery;
     }
 
-    private static String[] expandThroughTopicModel(String[] query, Map<String, String[]> typeTopicCounts, Map<Integer, String[]> topWords) {
-        List<String> expandedQuery = new ArrayList<String>();
+    private static String[][] expandThroughTopicModel(String[] query, Map<String, String[]> typeTopicCounts, Map<Integer,
+                                                    String[]> topWords, int numOfTopicsForExpansion, int numOfTopWordsPerTopic) {
+        String[][] expandedQuery = new String[numOfTopicsForExpansion][numOfTopWordsPerTopic];
 
         for (String queryElement : query) {
-            expandedQuery.add(queryElement);
+            //ToDo: add the query itself somehow, because only now it is normalized
+            //expandedQuery.add(queryElement);
 
             String[] topicCounts = typeTopicCounts.get(queryElement);
             if (topicCounts != null) {
@@ -65,57 +96,13 @@ public class QueryExpander {
                     int topicIndex = Integer.parseInt(topicIndexString[0]);
                     topWordsForTopic = topWords.get(topicIndex);
                     for (int j = 0; (j < topWordsForTopic.length) && (j < numOfTopWordsPerTopic); j++) {
-                        expandedQuery.add(topWordsForTopic[j]);
+                        expandedQuery[i][j] = topWordsForTopic[j];
                     }
-                    expandedQuery.add("");
                 }
 
             }
         }
-        return expandedQuery.toArray(new String[expandedQuery.size()]);
-    }
-
-    private static Map<Integer, String[]> readTopWords(String fileName) {
-        Map<Integer, String[]> topWords = new HashMap<Integer, String[]>();
-
-        try {
-            CSVReader csvReader = new CSVReader(new FileReader(fileName), ',', ' ');
-            int topicIndex = 0;
-            String[] nextLine;
-            while ((nextLine = csvReader.readNext()) != null) {
-                String[] topWordsForTopic = Arrays.copyOfRange(nextLine, 3, nextLine.length);
-                topWords.put(Integer.parseInt(nextLine[0]), topWordsForTopic);
-                topicIndex++;
-            }
-
-        } catch (FileNotFoundException e) {
-            System.out.println("Could not open Topic File.");
-            e.printStackTrace();
-        } catch (IOException e) {
-            System.out.println("Could not read next line in Topic File.");
-            e.printStackTrace();
-        }
-        return topWords;
-    }
-
-    private static Map<String, String[]> readTopicModel(String fileName) {
-        Map<String,String[]> typeTopicCounts = new HashMap<String, String[]>();
-        try {
-            CSVReader csvReader = new CSVReader(new FileReader(fileName), ' ');
-            String[] nextLine;
-            while ((nextLine = csvReader.readNext()) != null) {
-                String[] topicCounts = Arrays.copyOfRange(nextLine, 2, nextLine.length);
-                typeTopicCounts.put(nextLine[1], topicCounts);
-            }
-
-        } catch (FileNotFoundException e) {
-            System.out.println("Could not open Topic File.");
-            e.printStackTrace();
-        } catch (IOException e) {
-            System.out.println("Could not read next line in Topic File.");
-            e.printStackTrace();
-        }
-        return typeTopicCounts;
+        return expandedQuery;
     }
 
     private static String[] postprocessQuery(String[] splitQuery) {
