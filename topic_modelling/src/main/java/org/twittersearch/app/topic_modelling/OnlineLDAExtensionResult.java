@@ -25,13 +25,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 Adapted by Mandy Roick on 07.10.2014.
 */
 
-import au.com.bytecode.opencsv.CSVWriter;
-import vagueobjects.ir.lda.online.matrix.Matrix;
-import vagueobjects.ir.lda.online.matrix.Vector;
 import vagueobjects.ir.lda.tokens.Documents;
 
 import java.io.FileNotFoundException;
-import java.io.FileWriter;
 import java.io.PrintWriter;
 import java.util.*;
 
@@ -43,7 +39,7 @@ public class OnlineLDAExtensionResult {
 
     /**Number of terms per each tokens to show*/
     static int NUMBER_OF_TOKENS = 15;
-    private final Matrix lambda;
+    private final OnlineLDAExtensionMatrix lambda;
     private final double perplexity;
     private final Documents documents;
     private final int totalTokenCount;
@@ -55,7 +51,7 @@ public class OnlineLDAExtensionResult {
      * @param bound  - variational bound
      * @param lambda   - variational distribution q(beta|lambda)
      */
-    public OnlineLDAExtensionResult(Documents docs, int D, double bound, Matrix lambda) {
+    public OnlineLDAExtensionResult(Documents docs, int D, double bound, OnlineLDAExtensionMatrix lambda) {
         this.lambda = lambda;
         this.documents = docs;
         this.totalTokenCount = docs.getTokenCount();
@@ -70,7 +66,7 @@ public class OnlineLDAExtensionResult {
         int numTopics = lambda.getNumberOfRows();
         int numTerms = Math.min(NUMBER_OF_TOKENS, lambda.getNumberOfColumns());
         for (int k = 0; k < numTopics; ++k) {
-            Vector termScores = lambda.getRow(k);
+            OnlineLDAExtensionVector termScores = lambda.getRow(k);
 
             // ToDo: sortTopicTerms should
             for(OnlineLDAExtensionTuple tuple:  sortTopicTerms(termScores, numTerms)){
@@ -83,11 +79,11 @@ public class OnlineLDAExtensionResult {
         return sb.toString();
     }
 
-    private Collection<OnlineLDAExtensionTuple> sortTopicTerms(Vector termScores, int numTerms) {
+    private Collection<OnlineLDAExtensionTuple> sortTopicTerms(OnlineLDAExtensionVector termScores, int numTerms) {
         return ((ArrayList<OnlineLDAExtensionTuple>) sortTopicTerms(termScores)).subList(0, numTerms);
     }
 
-    private Collection<OnlineLDAExtensionTuple> sortTopicTerms(Vector termScores) {
+    private Collection<OnlineLDAExtensionTuple> sortTopicTerms(OnlineLDAExtensionVector termScores) {
         Set<OnlineLDAExtensionTuple> tuples = new TreeSet<OnlineLDAExtensionTuple>();
         double sum=0d;
         for(int i=0; i< termScores.getLength();++i){
@@ -110,7 +106,7 @@ public class OnlineLDAExtensionResult {
     public List<OnlineLDAExtensionTopic> topicScoresAndTopWords() {
         List<OnlineLDAExtensionTopic> result = new LinkedList<OnlineLDAExtensionTopic>();
 
-        Vector topicScores = lambda.sumByRows();
+        OnlineLDAExtensionVector topicScores = lambda.sumByRows();
         double topicScore;
         Collection<OnlineLDAExtensionTuple> topWordTuples;
         List<String> topWords;

@@ -78,7 +78,7 @@ public class OnlineTopicModelBuilder {
 
         String[] malletDataAlphabet = (String[]) instances.getDataAlphabet().toArray(new String[instances.getDataAlphabet().size()]);
         Vocabulary vocabulary = new PlainVocabulary(Arrays.asList(malletDataAlphabet));
-        OnlineLDAExtension lda = new OnlineLDAExtension(vocabulary.size(), numOfTopics, instances.size(), alpha, eta, tau, kappa);
+        OnlineLDAExtension lda = new OnlineLDAExtension(numOfTopics, instances.size(), alpha, eta, tau, kappa, vocabulary);
 
         for (int i = 0; i*batchSize < documents.size(); ++i) {
             int max = Math.min((i+1)*batchSize,documents.size());
@@ -101,7 +101,7 @@ public class OnlineTopicModelBuilder {
 
         String[] malletDataAlphabet = (String[]) instances.getDataAlphabet().toArray(new String[instances.getDataAlphabet().size()]);
         Vocabulary vocabulary = new PlainVocabulary(Arrays.asList(malletDataAlphabet));
-        this.ldaModel = new OnlineLDAExtension(vocabulary.size(), numOfTopics, instances.size(), alpha, eta, tau, kappa);
+        this.ldaModel = new OnlineLDAExtension(numOfTopics, instances.size(), alpha, eta, tau, kappa, vocabulary);
 
         for (int i = 0; i*batchSize < documents.size(); ++i) {
             System.out.println("Work on Batch number " + i + ".");
@@ -175,7 +175,7 @@ public class OnlineTopicModelBuilder {
             System.out.println("Work on Batch number " + i + ".");
             int max = Math.min((i+1)*batchSize,documents.size());
             Documents onlineLDADocuments = new Documents(documents.subList(i*batchSize, max), vocabulary);
-            this.currentResult = ldaModel.workOn(onlineLDADocuments);
+            this.currentResult = ldaModel.workOn(onlineLDADocuments, vocabulary);
             //System.out.println(this.currentResult);
         }
 
@@ -196,7 +196,7 @@ public class OnlineTopicModelBuilder {
             System.out.println("Work on Batch number " + i + ".");
             int max = Math.min((i+1)*batchSize,documents.size());
             Documents onlineLDADocuments = new Documents(documents.subList(i*batchSize, max), vocabulary);
-            this.currentResult = ldaModel.workOn(onlineLDADocuments);
+            this.currentResult = ldaModel.workOn(onlineLDADocuments, vocabulary);
             //System.out.println(this.currentResult);
         }
 

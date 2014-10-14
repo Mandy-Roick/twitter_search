@@ -25,13 +25,14 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 Adapted by Mandy Roick
 */
 
-import vagueobjects.ir.lda.online.matrix.Matrix;
-import vagueobjects.ir.lda.online.matrix.Vector;
 import vagueobjects.ir.lda.tokens.Documents;
+import vagueobjects.ir.lda.tokens.PlainVocabulary;
+import vagueobjects.ir.lda.tokens.Vocabulary;
 
-import static vagueobjects.ir.lda.online.matrix.MatrixUtil.*;
-import static vagueobjects.ir.lda.online.matrix.MatrixUtil.dirichletExpectation;
-import static vagueobjects.ir.lda.online.matrix.MatrixUtil.sum;
+import java.util.Collection;
+import java.util.HashSet;
+
+import static org.twittersearch.app.topic_modelling.OnlineLDAExtensionMatrixUtils.*;
 
 public class OnlineLDAExtension {
     public final static double MEAN_CHANGE_THRESHOLD = 1e-5;
@@ -41,19 +42,21 @@ public class OnlineLDAExtension {
     private final double kappa;
     private final int K;
     private final int  D;
-    private final int W;
+
     private final double tau0;
     private final double alpha;
     private final double eta;
     private double rhot;
-    private Matrix lambda;
-    private Matrix eLogBeta;
-    private Matrix expELogBeta;
-    private Matrix stats ;
-    private Matrix gamma;
+    private OnlineLDAExtensionMatrix lambda;
+    private OnlineLDAExtensionMatrix eLogBeta;
+    private OnlineLDAExtensionMatrix expELogBeta;
+    private OnlineLDAExtensionMatrix stats ;
+    private OnlineLDAExtensionMatrix gamma;
+
+    private Vocabulary vocabulary;
     /**
      * For a vector theta ~ Dir(alpha), computes E[log(theta)] given alpha.
-     * @param W  - vocabulary length
+     * @param vocabulary  - current vocabulary for calculating length needed for matrices
      * @param K  - number of topics
      * @param D  - total number of documents in the population.
      * @param alpha - hyperparameter for prior on weight vectors theta
@@ -61,18 +64,19 @@ public class OnlineLDAExtension {
      * @param tau   - controls early iterations
      * @param kappa -  learning rate: exponential decay rate, should be within (0.5, 1.0].
      */
-    public OnlineLDAExtension(int W, int K, int D, double alpha,
-                     double eta, double tau , double kappa) {
+    public OnlineLDAExtension(int K, int D, double alpha,
+                     double eta, double tau , double kappa, Vocabulary vocabulary) {
         this.K = K;
         this.D = D;
-        this.W = W;
         this.alpha = alpha;
         this.eta = eta;
         this.tau0 = tau + 1;
         this.kappa = kappa;
         this.batchCount = 0;
+
+        this.vocabulary = vocabulary;
         //initialize the variational distribution q(beta|lambda)
-        this.lambda = sampleGamma(W, K);
+        this.lambda = sampleGamma(vocabulary.size(), K);
         //posterior over topics -beta is parameterized by lambda
         this.eLogBeta = dirichletExpectation(lambda);
         this.expELogBeta = exp(eLogBeta);
@@ -87,8 +91,8 @@ public class OnlineLDAExtension {
         //parameters over documents x topics
         this.gamma = sampleGamma(K, batchD);
 
-        Matrix eLogTheta = dirichletExpectation(this.gamma);
-        Matrix expELogTheta = exp(eLogTheta);
+        OnlineLDAExtensionMatrix eLogTheta = dirichletExpectation(this.gamma);
+        OnlineLDAExtensionMatrix expELogTheta = exp(eLogTheta);
 
         this.stats = lambda.shape();
         for (int d = 0; d < batchD; ++d) {
@@ -97,23 +101,23 @@ public class OnlineLDAExtension {
                 continue;
             }
 
-            Vector cts = new Vector(wordCts[d]);
+            OnlineLDAExtensionVector cts = new OnlineLDAExtensionVector(wordCts[d]);
             //Topic proportions
-            Vector gammaD = gamma.getRow(d);
+            OnlineLDAExtensionVector gammaD = gamma.getRow(d);
 
-            Vector expELogThetaD = expELogTheta.getRow(d);
-            Matrix expELogBetaD = this.expELogBeta.extractColumns(ids);
+            OnlineLDAExtensionVector expELogThetaD = expELogTheta.getRow(d);
+            OnlineLDAExtensionMatrix expELogBetaD = this.expELogBeta.extractColumns(ids);
 
-            Vector phiNorm = expELogThetaD.dot(expELogBetaD);
+            OnlineLDAExtensionVector phiNorm = expELogThetaD.dot(expELogBetaD);
             phiNorm = phiNorm.add(1E-100);
-            Vector lastGamma;
+            OnlineLDAExtensionVector lastGamma;
 
             for (int it=0; it < NUM_ITERATIONS; ++it) {
                 lastGamma = gammaD;
-                Vector v1 = cts.div(phiNorm).dot(expELogBetaD.tr());
+                OnlineLDAExtensionVector v1 = cts.div(phiNorm).dot(expELogBetaD.tr());
                 gammaD =  expELogThetaD.product(v1).add(alpha);
 
-                Vector eLogThetaD = dirichletExpectation(gammaD);
+                OnlineLDAExtensionVector eLogThetaD = dirichletExpectation(gammaD);
                 expELogThetaD = exp(eLogThetaD);
 
                 phiNorm = expELogThetaD.dot(expELogBetaD).add(1E-100);
@@ -122,7 +126,7 @@ public class OnlineLDAExtension {
                 }
             }
             gamma.setRow(d, gammaD);
-            Matrix m = expELogThetaD.outer (cts.div(phiNorm));
+            OnlineLDAExtensionMatrix m = expELogThetaD.outer (cts.div(phiNorm));
             stats.incrementColumns(ids, m);
 
         }
@@ -131,6 +135,23 @@ public class OnlineLDAExtension {
 
     }
 
+    public OnlineLDAExtensionResult workOn(Documents docs, Vocabulary newVocabulary) {
+        this.vocabulary = combineVocabularies(this.vocabulary, newVocabulary);
+        this.lambda.enlarge(this.vocabulary.size());
+        return workOn(docs);
+    }
+
+    // TODO: move to a better fitting class (like Vocabulary)
+    private Vocabulary combineVocabularies(Vocabulary vocabulary1, Vocabulary vocabulary2) {
+        Collection<String> resultCollection = new HashSet<String>();
+        for (int i = 0; i < vocabulary1.size(); i++) {
+            resultCollection.add(vocabulary1.getToken(i));
+        }
+        for (int j = 0; j < vocabulary2.size(); j++) {
+            resultCollection.add(vocabulary2.getToken(j));
+        }
+        return new PlainVocabulary(resultCollection);
+    }
 
     public OnlineLDAExtensionResult workOn(Documents docs) {
         this.rhot = Math.pow(this.tau0 + this.batchCount, -this.kappa);
@@ -138,8 +159,8 @@ public class OnlineLDAExtension {
 
         double bound = approxBound( docs);
 
-        Matrix a = this.lambda.product(1 - rhot);
-        Matrix b = (stats.product( (double )D/ docs.size())).add(eta);
+        OnlineLDAExtensionMatrix a = this.lambda.product(1 - rhot);
+        OnlineLDAExtensionMatrix b = (stats.product( (double )D/ docs.size())).add(eta);
         b = b.product(rhot);
         this.lambda = a.add(b);
 
@@ -157,18 +178,18 @@ public class OnlineLDAExtension {
         int batchD = docs.size();
 
         double score =0d;
-        Matrix eLogTheta = dirichletExpectation(this.gamma);
+        OnlineLDAExtensionMatrix eLogTheta = dirichletExpectation(this.gamma);
 
         double tMax=0;
         for(int d=0; d<batchD;++d){
-            Vector ids = new Vector(wordIds[d]);
-            Vector cts = new Vector(wordCts[d]);
-            Vector phiNorm = new Vector(ids.getLength());
+            OnlineLDAExtensionVector ids = new OnlineLDAExtensionVector(wordIds[d]);
+            OnlineLDAExtensionVector cts = new OnlineLDAExtensionVector(wordCts[d]);
+            OnlineLDAExtensionVector phiNorm = new OnlineLDAExtensionVector(ids.getLength());
 
             for(int i=0; i< ids.getLength();++i){
-                Vector v =eLogBeta.extractColumn(wordIds[d][i]);
-                Vector topics =eLogTheta.getRow(d);
-                Vector u = v.add(topics) ;
+                OnlineLDAExtensionVector v =eLogBeta.extractColumn(wordIds[d][i]);
+                OnlineLDAExtensionVector topics =eLogTheta.getRow(d);
+                OnlineLDAExtensionVector u = v.add(topics) ;
                 tMax = u.max();
 
                 phiNorm.set(i, Math.log(sum(exp(u.add(-tMax)))) + tMax);
@@ -183,7 +204,7 @@ public class OnlineLDAExtension {
         score*= D/(double)docs.size();
         score-= sum(lambda.add(-eta).product(eLogBeta ));
         score+= sum(gammaLn(lambda).add(-gammaLn(eta)));
-        score-= sum(gammaLn(lambda.sumByRows()).add(-gammaLn(eta * W)));
+        score-= sum(gammaLn(lambda.sumByRows()).add(-gammaLn(eta * this.vocabulary.size())));
         return score;
     }
 }
