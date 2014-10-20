@@ -31,6 +31,7 @@ public class TwitterManager
 	
 	public void searchFor(String queryString) throws TwitterException {
 		Query query = new Query(queryString);//source:twitter4j yusukey");
+        query.setCount(100);
 	    QueryResult result = this.twitter.search(query);
 	    for (Status status : result.getTweets()) {
 	        System.out.println(status.getId() + " : @" + status.getUser().getScreenName() + ":" + status.getText());// + " +Language: " + status.getLang());
