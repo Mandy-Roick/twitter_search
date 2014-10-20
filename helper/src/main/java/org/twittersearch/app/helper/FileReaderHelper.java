@@ -35,6 +35,27 @@ public class FileReaderHelper {
         return typeTopicCounts;
     }
 
+    public static Map<String, Integer> readTypesTopics(String fileName) {
+        Map<String, Integer> typesTopics = new HashMap<String, Integer>();
+        try {
+            CSVReader csvReader = new CSVReader(new FileReader(fileName), ' ');
+            String[] nextLine;
+            String currentTopicString;
+            while ((nextLine = csvReader.readNext()) != null) {
+                currentTopicString = (nextLine[2].split(":"))[0];
+                typesTopics.put(nextLine[1], Integer.parseInt(currentTopicString));
+            }
+
+        } catch (FileNotFoundException e) {
+            System.out.println("Could not open Topic File.");
+            e.printStackTrace();
+        } catch (IOException e) {
+            System.out.println("Could not read next line in Topic File.");
+            e.printStackTrace();
+        }
+        return typesTopics;
+    }
+
     public static Map<Integer, String[]> readTopWords(String fileName) {
         Map<Integer, String[]> topWords = new HashMap<Integer, String[]>();
 
