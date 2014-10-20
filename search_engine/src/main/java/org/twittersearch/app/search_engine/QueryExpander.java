@@ -20,15 +20,14 @@ public class QueryExpander {
     public static void main(String[] args) {
         int numOfTopicsForExpansion = 3;
         int numOfTopWordsPerTopic = 3;
-        String date = "2014_10_04";
+        String date = "2014_10_15";
         String[][] expandedQuery;
         if (args.length == 1 ) {
             expandedQuery = expand(args[1], numOfTopicsForExpansion, numOfTopWordsPerTopic, date);
         } else {
-            expandedQuery = expand("china", numOfTopicsForExpansion, numOfTopWordsPerTopic, date);
+            expandedQuery = expand("politics", numOfTopicsForExpansion, numOfTopWordsPerTopic, date);
         }
 
-        System.out.println("china");
         for (String[] queryTopicElement : expandedQuery) {
             for (String queryElement : queryTopicElement) {
                 System.out.println(queryElement);
@@ -37,8 +36,7 @@ public class QueryExpander {
         }
     }
 
-    public static String[][] expand(String query, int numOfTopicsForExpansion, int numOfTopWordsPerTopic, String date) {
-        String filePrefix = "trimmed_tm-200_"+ date;
+    public static String[][] expand(String query, int numOfTopicsForExpansion, int numOfTopWordsPerTopic, String filePrefix) {
 
         // Process Query
         String preprocessedQuery = preprocessQuery(query);

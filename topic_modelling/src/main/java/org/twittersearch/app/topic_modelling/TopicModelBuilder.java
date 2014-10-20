@@ -6,8 +6,10 @@ import cc.mallet.pipe.iterator.CsvIterator;
 import cc.mallet.topics.ParallelTopicModel;
 import cc.mallet.types.*;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+import org.twittersearch.app.helper.FileReaderHelper;
 
 import java.io.*;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -16,12 +18,17 @@ import java.util.regex.Pattern;
  */
 public class TopicModelBuilder {
 
+    private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+
     public static void main(String[] args) {
-        String date = "2014-10-10";
-        learnTopicModel(date);
+        Calendar c = Calendar.getInstance();
+        c.set(2014, 9, 07); //Months start with 0 :(
+        c.add(Calendar.DATE, 1); //08 is for him a too large integer number
+        learnTopicModel3Days(c);
     }
 
-    public static void learnTopicModel(String date) {
+    public static String learnTopicModel(Calendar c) {
+        String date = sdf.format(c.getTime());
         String inputFileName = "mallet_input_file_" + date + ".csv";
 
         int numTopics = 200;
@@ -30,15 +37,21 @@ public class TopicModelBuilder {
         try {
 
             // We need two instanceIterator, because of the word frequencies
-            Reader fileReader1 = new InputStreamReader(new FileInputStream(new File(inputFileName)), "UTF-8");
-            Reader fileReader2 = new InputStreamReader(new FileInputStream(new File(inputFileName)), "UTF-8");
-            Iterator<Instance> inputIterator1 =  new CsvIterator(fileReader1, Pattern.compile("^(\\S*)[\\s,]*(\\S*)[\\s,]*(.*)$"), 3, 2, 1); // data, label, name fields
-            Iterator<Instance> inputIterator2 =  new CsvIterator(fileReader2, Pattern.compile("^(\\S*)[\\s,]*(\\S*)[\\s,]*(.*)$"), 3, 2, 1); // data, label, name fields
-            InstanceList instances = createInstanceList(inputIterator1, inputIterator2, filePrefix);
-            fileReader1.close();
-            fileReader2.close();
+            InstanceList instances = createInstances(date, inputFileName, filePrefix);
 
-            ParallelTopicModel model = new ParallelTopicModel(numTopics, 0.01*numTopics, 0.05);
+            ParallelTopicModelExtension model;
+
+            c.add(Calendar.DATE, -1);
+            String yesterdayTopicsFileName = "trimmed_tm-" + numTopics + "_" + sdf.format(c.getTime())+ "_type_topic_counts.results";
+            File yesterdayTopicsFile = new File(yesterdayTopicsFileName);
+            if (yesterdayTopicsFile.exists()) {
+                Map<String, Integer> typeTopicCounts = FileReaderHelper.readTypesTopics(yesterdayTopicsFileName);
+                model = new ParallelTopicModelExtension(typeTopicCounts, numTopics, 0.01*numTopics, 0.05);
+            } else {
+                model = new ParallelTopicModelExtension(numTopics, 0.01*numTopics, 0.05);
+            }
+            c.add(Calendar.DATE, 1);
+
             model.addInstances(instances);
             model.setNumThreads(2);
             model.setNumIterations(500);
@@ -85,9 +98,90 @@ public class TopicModelBuilder {
             e.printStackTrace();
         }
 
+        return filePrefix;
     }
 
-    private static TopicContainer[] extractTopicScores(int numTopics, ParallelTopicModel model) {
+    public static String learnTopicModel3Days(Calendar endDateCalendar) {
+        int numberOfDays = 4;
+
+        String date = sdf.format(endDateCalendar.getTime());
+        String inputFileName = "mallet_input_file_" + date + ".csv";
+
+        int numTopics = 200;
+        String filePrefix = "five-day-tm-" + numTopics + "_" + date;
+
+        try {
+            List<String> inputFileNames = new LinkedList<String>();
+            inputFileNames.add(inputFileName);
+            for (int i = 0; i < numberOfDays-1; i++) {
+                endDateCalendar.add(Calendar.DATE, -1);
+                date = sdf.format(endDateCalendar.getTime());
+                inputFileName = "mallet_input_file_" + date + ".csv";
+                inputFileNames.add(inputFileName);
+            }
+
+            ParallelTopicModelExtension model = new ParallelTopicModelExtension(numTopics, 0.01*numTopics, 0.05);
+            InstanceList instances = createInstances(date, inputFileNames, filePrefix);
+            model.addInstances(instances);
+
+            model.setNumThreads(2);
+            model.setNumIterations(500);
+            model.setSymmetricAlpha(false);
+            model.estimate();
+
+            //model.printTopicWordWeights(new File(filePrefix + "_words.results"));
+            model.printTypeTopicCounts(new File(filePrefix + "_type_topic_counts.results"));
+            //model.printDocumentTopics(new File(filePrefix + "_document_topics.results"));
+
+            TopicContainer[] topics = extractTopicScores(numTopics, model);
+
+            writeTopWordsToCsv(filePrefix, model, topics);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return filePrefix;
+
+    }
+
+    private static InstanceList createInstances(String date, List<String> inputFileNames, String filePrefix) throws IOException {
+        List<Iterator<Instance>> inputIterators1 = new LinkedList<Iterator<Instance>>();
+        List<Iterator<Instance>> inputIterators2 = new LinkedList<Iterator<Instance>>();
+        List<Reader> fileReaders = new LinkedList<Reader>();
+        for (String inputFileName : inputFileNames) {
+            File inputFile = new File(inputFileName);
+            if (!inputFile.exists()) {
+                MalletInputFileCreator.writeDBContentToInputFile(inputFileName, date);
+            }
+
+            // We need two instanceIterator, because of the word frequencies
+            Reader fileReader1 = new InputStreamReader(new FileInputStream(new File(inputFileName)), "UTF-8");
+            fileReaders.add(fileReader1);
+            Reader fileReader2 = new InputStreamReader(new FileInputStream(new File(inputFileName)), "UTF-8");
+            fileReaders.add(fileReader2);
+            Iterator<Instance> inputIterator1 = new CsvIterator(fileReader1, Pattern.compile("^(\\S*)[\\s,]*(\\S*)[\\s,]*(.*)$"), 3, 2, 1); // data, label, name fields
+            inputIterators1.add(inputIterator1);
+            Iterator<Instance> inputIterator2 = new CsvIterator(fileReader2, Pattern.compile("^(\\S*)[\\s,]*(\\S*)[\\s,]*(.*)$"), 3, 2, 1); // data, label, name fields
+            inputIterators2.add(inputIterator2);
+        }
+        InstanceList instances = createInstanceList(inputIterators1, inputIterators2, filePrefix);
+
+        for (Reader fileReader : fileReaders) {
+            fileReader.close();
+        }
+
+        return instances;
+    }
+
+    private static InstanceList createInstances(String date, String inputFileName, String filePrefix) throws IOException {
+        List<String> inputFileNames = new LinkedList<String>();
+        inputFileNames.add(inputFileName);
+
+        return createInstances(date, inputFileNames, filePrefix);
+    }
+
+    private static TopicContainer[] extractTopicScores(int numTopics, ParallelTopicModelExtension model) {
         TopicContainer[] topics = new TopicContainer[numTopics];
 
         for (int i = 0; i < topics.length; i++) {
@@ -119,7 +213,7 @@ public class TopicModelBuilder {
         return topics;
     }
 
-    private static void writeTopWordsToCsv(String filePrefix, ParallelTopicModel model) throws IOException {
+    private static void writeTopWordsToCsv(String filePrefix, ParallelTopicModelExtension model) throws IOException {
         CSVWriter topWordsCsvWriter = new CSVWriter(new FileWriter(filePrefix + "_top_words.results"), ',', ' ');
         Object[][] topWords = model.getTopWords(20);
         for (Object[] topic : topWords) {
@@ -132,7 +226,7 @@ public class TopicModelBuilder {
         topWordsCsvWriter.close();
     }
 
-    private static void writeTopWordsToCsv(String filePrefix, ParallelTopicModel model, TopicContainer[] topicScores) throws IOException {
+    private static void writeTopWordsToCsv(String filePrefix, ParallelTopicModelExtension model, TopicContainer[] topicScores) throws IOException {
         List<TopicContainer> topics = Arrays.asList(topicScores);
         CSVWriter topWordsCsvWriter = new CSVWriter(new FileWriter(filePrefix + "_top_words.results"), ',', ' ');
         Object[][] topWords = model.getTopWords(20);
@@ -176,6 +270,7 @@ public class TopicModelBuilder {
         InstanceList initialInstances = new InstanceList (new SerialPipes(standardPipeList));
 
         initialInstances.addThruPipe(inputIterator1);
+        // TODO: add second and third inputIterator for second and third day for three day tm
 
 
         // Create the final instanceList which contains no words which are in less than 10 tweets.
@@ -212,6 +307,66 @@ public class TopicModelBuilder {
         return prunedInstances;
     }
 
+    private static InstanceList createInstanceList(List<Iterator<Instance>> inputIterators1, List<Iterator<Instance>> inputIterators2, String filePrefix, boolean writeFrequencies) throws IOException {
+        //TODO: write less duplicated code!
+        // ideas:   - use prune method from FeatureSequence (but needs the creation of a new Alphabet)
+        //          - write my own pipe which is able to do this (probably use two pipes -> one to extract frequencies, one to delete less frequent words)
+        // Create an initial instanceList which can be used to extract the frequencies of words.
+        ArrayList<Pipe> standardPipeList = new ArrayList<Pipe>();
+
+        // Pipes: lowercase, tokenize, remove stopwords, map to features
+        standardPipeList.add(new CharSequenceLowercase());
+        //This pattern filters all sequences of at least 3 literals
+        standardPipeList.add(new CharSequence2TokenSequence(Pattern.compile("[#\\p{L}][\\p{L}\\p{Pd}\\p{M}']+\\p{L}")));
+
+        TokenSequenceRemoveStopwords mySqlStopWordsPipe = new TokenSequenceRemoveStopwords(new File("stop_lists/stop_words_mysql.txt"), "UTF-8", false, false, false);
+        standardPipeList.add(mySqlStopWordsPipe);
+        standardPipeList.add(new StemmerPipe());
+        standardPipeList.add(new TokenSequence2FeatureSequence());
+
+        InstanceList initialInstances = new InstanceList (new SerialPipes(standardPipeList));
+
+        for (Iterator<Instance> inputIterator1 : inputIterators1) {
+            initialInstances.addThruPipe(inputIterator1);
+        }
+
+        // Create the final instanceList which contains no words which are in less than 10 tweets.
+        ArrayList<Pipe> prunedPipeList = new ArrayList<Pipe>();
+        prunedPipeList.add(new CharSequenceLowercase());
+        prunedPipeList.add(new CharSequence2TokenSequence(Pattern.compile("[#\\p{L}][\\p{L}\\p{Pd}\\p{M}']+\\p{L}")));
+        prunedPipeList.add(mySqlStopWordsPipe);
+        StemmerPipe stemmer = new StemmerPipe();
+        prunedPipeList.add(stemmer);
+
+        Map<String, Integer> wordFrequencies = getWordFrequencies(initialInstances);
+        List<String> cutOffWords = getCutOffWords(wordFrequencies, 10);
+        TokenSequenceRemoveStopwords cutOffStopWordsPipe = new TokenSequenceRemoveStopwords();
+        cutOffStopWordsPipe.addStopWords(cutOffWords.toArray(new String[cutOffWords.size()]));
+        prunedPipeList.add(cutOffStopWordsPipe);
+
+        prunedPipeList.add(new TokenSequence2FeatureSequence());
+
+        InstanceList prunedInstances = new InstanceList (new SerialPipes(prunedPipeList));
+
+        for (Iterator<Instance> inputIterator2 : inputIterators2) {
+            prunedInstances.addThruPipe(inputIterator2);
+        }
+        Map<String, String> stemmingDictionary = stemmer.getFinalStemmingDictionary();
+        writeStemmingDictionaryFile(filePrefix, stemmingDictionary);
+
+        // sort words after frequencies and write to file if wanted
+        List<Map.Entry<String, Integer>> wordFrequenciesList = new LinkedList<Map.Entry<String, Integer>>(wordFrequencies.entrySet());
+        Collections.sort(wordFrequenciesList, new Comparator<Map.Entry<String, Integer>>() {
+            @Override
+            public int compare(Map.Entry<String, Integer> o1, Map.Entry<String, Integer> o2) {
+                return o2.getValue().compareTo(o1.getValue());
+            }
+        });
+
+        if(writeFrequencies) writeWordFrequenciesToCsv(filePrefix, wordFrequenciesList);
+        return prunedInstances;
+    }
+
     private static void writeStemmingDictionaryFile(String filePrefix, Map<String, String> stemmingDictionary) {
         File file = new File(filePrefix + "_stemming_dictionary.results");
         try {
@@ -227,6 +382,10 @@ public class TopicModelBuilder {
     }
 
     private static InstanceList createInstanceList(Iterator<Instance> inputIterator1, Iterator<Instance> inputIterator2, String filePrefix) throws IOException {
+        return createInstanceList(inputIterator1, inputIterator2, filePrefix, true);
+    }
+
+    private static InstanceList createInstanceList(List<Iterator<Instance>> inputIterator1, List<Iterator<Instance>> inputIterator2, String filePrefix) throws IOException {
         return createInstanceList(inputIterator1, inputIterator2, filePrefix, true);
     }
 

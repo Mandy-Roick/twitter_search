@@ -6,19 +6,20 @@ import cc.mallet.types.Token;
 import cc.mallet.types.TokenSequence;
 import org.tartarus.snowball.ext.PorterStemmer;
 
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.TreeMap;
 
 /**
  * Created by Mandy Roick on 04.08.2014.
  */
 public class StemmerPipe extends Pipe {
 
-    private Map<String, TreeMap<String, Integer>> stemmingDictionary;
+    private Map<String, Map<String, Integer>> stemmingDictionary;
 
     public StemmerPipe() {
-        this.stemmingDictionary = new HashMap<String, TreeMap<String, Integer>>();
+        this.stemmingDictionary = new HashMap<String, Map<String, Integer>>();
     }
 
     @Override public Instance pipe(Instance carrier) {
@@ -44,9 +45,9 @@ public class StemmerPipe extends Pipe {
     }
 
     private void updateStemmingDictionary(String originalWord, String stemmedWord) {
-        TreeMap<String, Integer> originalWords = this.stemmingDictionary.get(stemmedWord);
+        Map<String, Integer> originalWords = this.stemmingDictionary.get(stemmedWord);
         if (originalWords == null) {
-            originalWords = new TreeMap<String, Integer>();
+            originalWords = new HashMap<String, Integer>();
         }
         Integer originalWordCount = originalWords.get(originalWord);
         if (originalWordCount == null) {
@@ -67,11 +68,20 @@ public class StemmerPipe extends Pipe {
     }
 
     private String getBestOriginalWord(String stemmedWord) {
-        TreeMap<String, Integer> originalWords = this.stemmingDictionary.get(stemmedWord);
+        Map<String, Integer> originalWords = this.stemmingDictionary.get(stemmedWord);
         if (originalWords == null) {
+            // return null and do not add to Map, obwohl, eigentlich sollte der Fall nicht eintreten
             return stemmedWord;
         }
-        return originalWords.firstKey();
+
+        Map.Entry<String, Integer> originalWordWithHighestCount =
+                Collections.max(originalWords.entrySet(), new Comparator<Map.Entry<String, Integer>>() {
+                                                                @Override
+                                                                public int compare(Map.Entry<String, Integer> o1, Map.Entry<String, Integer> o2) {
+                                                                    return o1.getValue() > o2.getValue() ? 1 : -1;
+                                                                }
+                                                            });
+        return originalWordWithHighestCount.getKey();
     }
 
     public static String stem(String input) {

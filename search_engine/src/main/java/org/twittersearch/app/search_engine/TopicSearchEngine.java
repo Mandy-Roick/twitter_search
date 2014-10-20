@@ -5,6 +5,7 @@ import org.twittersearch.app.topic_modelling.TopicModelBuilder;
 import org.twittersearch.app.twitter_api_usage.TwitterManager;
 import twitter4j.TwitterException;
 
+import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -15,7 +16,7 @@ import java.util.Date;
 public class TopicSearchEngine {
 
     public static void main(String[] args) {
-        String query = "nfl";
+        String query = "politics";
         if (args.length == 1) {
             query = args[1];
         }
@@ -23,7 +24,11 @@ public class TopicSearchEngine {
     }
 
     public static void expandQuery(String query) {
-        String date = getDateOfYesterday();
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        Calendar calendarOfYesterday = Calendar.getInstance();
+        calendarOfYesterday.setTime(new Date()); // Now use today date.
+        calendarOfYesterday.add(Calendar.DATE, -1); // subtracting 1 day
+        String date = sdf.format(calendarOfYesterday.getTime());
 
         //TwitterManager tm = new TwitterManager();
         //String[] politics = new String[5];
@@ -33,9 +38,8 @@ public class TopicSearchEngine {
             //e.printStackTrace();
         //}
 
-        //MalletInputFileCreator.writeDBContentToInputFile("mallet_input_file_" + date + ".csv", date);
-        TopicModelBuilder.learnTopicModel(date);
-        String[][] expandedQuery = QueryExpander.expand(query, 5, 3, date);
+        String filePrefix = TopicModelBuilder.learnTopicModel(calendarOfYesterday);
+        String[][] expandedQuery = QueryExpander.expand(query, 5, 3, filePrefix);
 
         TwitterManager twitterManager = new TwitterManager();
         for (String[] topicQuery : expandedQuery) {
@@ -53,11 +57,11 @@ public class TopicSearchEngine {
         }
     }
 
-    public static String getDateOfYesterday() {
+    public static Calendar getDateOfYesterday() {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
         Calendar c = Calendar.getInstance();
         c.setTime(new Date()); // Now use today date.
         c.add(Calendar.DATE, -1); // subtracting 1 day
-        return sdf.format(c.getTime());
+        return c;
     }
 }
