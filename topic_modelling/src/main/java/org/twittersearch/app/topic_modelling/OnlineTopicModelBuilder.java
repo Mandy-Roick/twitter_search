@@ -116,7 +116,7 @@ public class OnlineTopicModelBuilder {
     private static InstanceList createInstanceList(String inputFileName) {
         //DBManager dbManager = new DBManager();
 
-        //Map<Long, String> tweetIdsToContent = dbManager.selectTweetsCreatedAt(date);
+        //Map<Long, String> tweetIdsToContent = dbManager.selectTweetContentsCreatedAt(date);
         //Map<Long, List<String>> tweetsHashtags = dbManager.selectTweetsAndHashtagsCreatedAt(date);
 
         //TweetPreprocessor tweetPreprocessor = new TweetPreprocessor();
