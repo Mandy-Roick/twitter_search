@@ -15,7 +15,7 @@ import java.util.Map;
 public class DBManager {
     private Connection connection;
 
-    private String password = ""; //"";
+    private String password = "";
     private String user = "";
 
     public DBManager() {
@@ -372,12 +372,12 @@ public class DBManager {
 
     //---------------------------------    SELECT     ------------------------------------//
 
-    public Map<Long,String> selectTweetsCreatedAt(String date) {
+    public Map<Long,String> selectTweetContentsCreatedAt(String date) {
         Map<Long, String> tweetIdToContent = new HashMap<Long, String>();
         try {
             Statement statement = connection.createStatement();
             ResultSet result = statement.executeQuery("SELECT id, content FROM mandy_masterarbeit.twitter_tweet " +
-                                                        "WHERE created_at = '" + date + "'");
+                    "WHERE created_at = '" + date + "'");
 
             while(result.next()) {
                 long tweetId = result.getLong(1);
@@ -391,6 +391,30 @@ public class DBManager {
             e.printStackTrace();
         }
         return tweetIdToContent;
+    }
+
+    public List<TweetObject> selectTweetsCreatedAt(String date) {
+        List<TweetObject> tweets = new LinkedList<TweetObject>();
+        try {
+            Statement statement = connection.createStatement();
+            ResultSet result = statement.executeQuery("SELECT id, content, evaluation_flag FROM mandy_masterarbeit.twitter_tweet " +
+                    "WHERE created_at = '" + date + "'");
+
+            TweetObject currentTweet;
+            while(result.next()) {
+                long tweetId = result.getLong(1);
+                String tweetContent = result.getString(2);
+                String evaluation_flag = result.getString(3);
+                currentTweet = new TweetObject(tweetId, tweetContent, evaluation_flag);
+                tweets.add(currentTweet);
+            }
+
+            statement.close();
+        } catch (SQLException e) {
+            System.out.println("Could not select tweets from DB which are created at: " + date + "!");
+            e.printStackTrace();
+        }
+        return tweets;
     }
 
     public String[] selectHashtagsForTweet(Long tweetId) {

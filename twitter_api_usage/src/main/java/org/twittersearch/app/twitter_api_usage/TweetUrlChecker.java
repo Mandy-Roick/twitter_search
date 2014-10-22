@@ -28,7 +28,7 @@ public class TweetUrlChecker {
         Map<Long, List<String>> tweetsUrls = new HashMap<Long, List<String>>();
 
         int counter = 0;
-        Map<Long,String> tweets = dbManager.selectTweetsCreatedAt(date);
+        Map<Long,String> tweets = dbManager.selectTweetContentsCreatedAt(date);
         System.out.println("Have to collect " + tweets.size() + " Tweets.");
         for(Long tweetId : tweets.keySet()) {
             System.out.println(counter);

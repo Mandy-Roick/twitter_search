@@ -16,7 +16,7 @@ public class TweetsToJSONConverter {
     public static void main(String[] args) {
         String date = "2014-10-04";
         DBManager dbManager = new DBManager();
-        Map<Long,String> tweetsFromDate = dbManager.selectTweetsCreatedAt(date);
+        Map<Long,String> tweetsFromDate = dbManager.selectTweetContentsCreatedAt(date);
         writeTweetsToJSONFile(tweetsFromDate, date + "_tweets.json");
 
     }
