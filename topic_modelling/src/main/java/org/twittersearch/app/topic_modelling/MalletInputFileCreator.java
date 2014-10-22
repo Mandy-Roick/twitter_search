@@ -1,9 +1,6 @@
 package org.twittersearch.app.topic_modelling;
 
 import au.com.bytecode.opencsv.CSVWriter;
-import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-import org.apache.commons.lang.StringUtils;
 import org.twittersearch.app.twitter_api_usage.DBManager;
 
 import java.io.FileWriter;
@@ -20,13 +17,13 @@ public class MalletInputFileCreator {
     String date;
 
     public static void main(String[] args) {
-        String date = "2014-10-09";
+        String date = "2014-10-10";
         MalletInputFileCreator.writeDBContentToInputFile("mallet_input_file_" + date + ".csv", date);
     }
 
     public static void writeDBContentToInputFile(String filePath, String date) {
         DBManager dbManager = new DBManager();
-        Map<Long, String> tweetIdsToContent = dbManager.selectTweetsCreatedAt(date);
+        Map<Long, String> tweetIdsToContent = dbManager.selectTweetContentsCreatedAt(date);
         Map<Long, List<String>> tweetsHashtags = dbManager.selectTweetsAndHashtagsCreatedAt(date);
 
         MalletInputFileCreator.writeTweetsToInputFile(filePath, tweetIdsToContent, tweetsHashtags);
