@@ -41,7 +41,7 @@ public class TopicSearchEngine {
         //}
 
         String filePrefix = TopicModelBuilder.learnTopicModel(calendarOfYesterday);
-        String[][] expandedQuery = QueryExpander.expand(query, 5, 3, filePrefix);
+        String[][] expandedQuery = QueryExpander.expand(query, 0.1, 3, filePrefix);
 
         return expandedQuery;
     }
@@ -50,7 +50,7 @@ public class TopicSearchEngine {
 
         //String filePrefix = TopicModelBuilder.learnTopicModel(calendarOfYesterday);
         String filePrefix = "trimmed_tm-200_" + date;
-        String[][] expandedQuery = QueryExpander.expand(query, 5, 3, filePrefix);
+        String[][] expandedQuery = QueryExpander.expand(query, 0.1, 3, filePrefix);
 
         return expandedQuery;
     }

@@ -1,6 +1,7 @@
 package org.twittersearch.app.search_engine;
 
 import org.twittersearch.app.helper.FileReaderHelper;
+import org.twittersearch.app.helper.TypeContainer;
 import org.twittersearch.app.topic_modelling.TweetPreprocessor;
 
 import java.io.FileInputStream;
@@ -17,14 +18,15 @@ import static org.twittersearch.app.topic_modelling.StemmerPipe.*;
 public class QueryExpander {
 
     public static void main(String[] args) {
-        int numOfTopicsForExpansion = 3;
+        double topicPercentageThreshold = 0.1; //10%
         int numOfTopWordsPerTopic = 3;
-        String date = "2014_10_15";
+        String date = "2014-10-15";
+        String filePrefix = "trimmed_tm-200_" + date;
         String[][] expandedQuery;
         if (args.length == 1 ) {
-            expandedQuery = expand(args[1], numOfTopicsForExpansion, numOfTopWordsPerTopic, date);
+            expandedQuery = expand(args[1], topicPercentageThreshold, numOfTopWordsPerTopic, filePrefix);
         } else {
-            expandedQuery = expand("politics", numOfTopicsForExpansion, numOfTopWordsPerTopic, date);
+            expandedQuery = expand("sports", topicPercentageThreshold, numOfTopWordsPerTopic, filePrefix);
         }
 
         for (String[] queryTopicElement : expandedQuery) {
@@ -35,17 +37,18 @@ public class QueryExpander {
         }
     }
 
-    public static String[][] expand(String query, int numOfTopicsForExpansion, int numOfTopWordsPerTopic, String filePrefix) {
+    // TODO: test with different topicPercentageThresholds - 10% is for sports probably to big
+    public static String[][] expand(String query, double topicPercentageThreshold, int numOfTopWordsPerTopic, String filePrefix) {
 
         // Process Query
         String preprocessedQuery = preprocessQuery(query);
         String[] splitQuery = splitQuery(preprocessedQuery);
         String[] postprocessedQuery = postprocessQuery(splitQuery);
 
-        Map<String, String[]> typeTopicCounts = FileReaderHelper.readTopicModelForExpansion(filePrefix + "_type_topic_counts.results");
+        Map<String, TypeContainer> types = FileReaderHelper.readTypes(filePrefix + "_type_topic_counts.results");
         Map<Integer, String[]> topWords = FileReaderHelper.readTopWords(filePrefix + "_top_words.results");
 
-        String[][] expandedQuery = expandThroughTopicModel(postprocessedQuery, typeTopicCounts, topWords, numOfTopicsForExpansion, numOfTopWordsPerTopic);
+        String[][] expandedQuery = expandThroughTopicModel(postprocessedQuery, types, topWords, topicPercentageThreshold, numOfTopWordsPerTopic);
 
         try {
             FileInputStream fis = new FileInputStream(filePrefix + "_stemming_dictionary.results");
@@ -73,33 +76,30 @@ public class QueryExpander {
         return expandedQuery;
     }
 
-    private static String[][] expandThroughTopicModel(String[] query, Map<String, String[]> typeTopicCounts, Map<Integer,
-                                                    String[]> topWords, int numOfTopicsForExpansion, int numOfTopWordsPerTopic) {
-        String[][] expandedQuery = new String[numOfTopicsForExpansion][numOfTopWordsPerTopic];
+    private static String[][] expandThroughTopicModel(String[] query, Map<String, TypeContainer> types, Map<Integer,
+                                                    String[]> topWords, double topicPercentageThreshold, int numOfTopWordsPerTopic) {
+        List<String[]> expandedQuery = new ArrayList<String[]>();
 
         for (String queryElement : query) {
             //ToDo: add the query itself somehow, because only now it is normalized
             //expandedQuery.add(queryElement);
 
-            String[] topicCounts = typeTopicCounts.get(queryElement);
-            if (topicCounts != null) {
+            TypeContainer typeContainer = types.get(queryElement);
+            if (typeContainer != null) {
 
-                String topicCount;
-                String[] topicIndexString;
+                Integer[] topicIndices = typeContainer.getBestTopics(topicPercentageThreshold);
                 String[] topWordsForTopic;
-                for (int i = 0; (i < topicCounts.length) && (i < numOfTopicsForExpansion); i++) {
-                    topicCount = topicCounts[i];
-                    topicIndexString = topicCount.split(":");
-                    int topicIndex = Integer.parseInt(topicIndexString[0]);
+                for (Integer topicIndex : topicIndices) {
+                    String[] expandedTopicQuery = new String[numOfTopWordsPerTopic];
                     topWordsForTopic = topWords.get(topicIndex);
                     for (int j = 0; (j < topWordsForTopic.length) && (j < numOfTopWordsPerTopic); j++) {
-                        expandedQuery[i][j] = topWordsForTopic[j];
+                        expandedTopicQuery[j] = topWordsForTopic[j];
                     }
+                    expandedQuery.add(expandedTopicQuery);
                 }
-
             }
         }
-        return expandedQuery;
+        return expandedQuery.toArray(new String[expandedQuery.size()][]);
     }
 
     private static String[] postprocessQuery(String[] splitQuery) {
