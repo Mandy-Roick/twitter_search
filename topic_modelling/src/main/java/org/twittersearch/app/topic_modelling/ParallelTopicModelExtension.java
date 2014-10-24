@@ -92,7 +92,7 @@ public class ParallelTopicModelExtension implements Serializable {
     public NumberFormat formatter;
     public boolean printLogLikelihood = true;
 
-    public Map<String, Integer> typesTopics = null;
+    public Map<String, double[]> typesTopicProbabilites = null;
 
     // The number of times each type appears in the corpus
     int[] typeTotals;
@@ -109,9 +109,9 @@ public class ParallelTopicModelExtension implements Serializable {
         this (newLabelAlphabet (numberOfTopics), alphaSum, beta);
     }
 
-    public ParallelTopicModelExtension (Map<String, Integer> typesTopics, int numberOfTopics, double alphaSum, double beta) {
+    public ParallelTopicModelExtension (Map<String, double[]> typesTopicProbabilites, int numberOfTopics, double alphaSum, double beta) {
         this (newLabelAlphabet (numberOfTopics), alphaSum, beta);
-        this.typesTopics = typesTopics;
+        this.typesTopicProbabilites = typesTopicProbabilites;
     }
 
     private static LabelAlphabet newLabelAlphabet (int numTopics) {
@@ -272,12 +272,12 @@ public class ParallelTopicModelExtension implements Serializable {
             int[] topics = topicSequence.getFeatures();
             for (int position = 0; position < topics.length; position++) {
 
-                // Todo: if feature known from earlier topic model choose its topic instead of random
-                Integer topic;
-                if (typesTopics != null) {
+                // Todo: use sampling instead of taking always only the best topic
+                int topic;
+                if (typesTopicProbabilites != null) {
                     String type = (String) tokens.get(position);
-                    topic = this.typesTopics.get(type);
-                    if (topic == null) {
+                    topic = sampleTopicFrom(this.typesTopicProbabilites.get(type), random);
+                    if (topic == -1) {
                         topic = random.nextInt(numTopics);
                     }
                 } else {
@@ -295,6 +295,27 @@ public class ParallelTopicModelExtension implements Serializable {
 
         buildInitialTypeTopicCounts();
         initializeHistograms();
+    }
+
+    private static int sampleTopicFrom(double[] topicProbabilites, Randoms random) {
+        if (topicProbabilites == null) {
+            return -1;
+        }
+        double sumOfProbs = 0;
+        for(double prob : topicProbabilites)
+            sumOfProbs += prob;
+
+        double randomNumber = random.nextDouble() * sumOfProbs;
+        int i;
+        sumOfProbs = 0;
+
+        for(i = 0; i < topicProbabilites.length; i++) {
+            sumOfProbs += topicProbabilites[i];
+            if (sumOfProbs > randomNumber)
+                break;
+        }
+
+        return i;
     }
 
     public void initializeFromState(File stateFile) throws IOException {

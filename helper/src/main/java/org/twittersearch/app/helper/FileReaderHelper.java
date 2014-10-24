@@ -15,14 +15,44 @@ import java.util.Map;
 public class FileReaderHelper {
 
 
-    public static Map<String, String[]> readTopicModel(String fileName) {
+    public static Map<String, String[]> readTopicModelForExpansion(String fileName) {
         Map<String,String[]> typeTopicCounts = new HashMap<String, String[]>();
         try {
             CSVReader csvReader = new CSVReader(new FileReader(fileName), ' ');
             String[] nextLine;
             while ((nextLine = csvReader.readNext()) != null) {
+                // Ignores that all the topic counts are still in the format 10:193
                 String[] topicCounts = Arrays.copyOfRange(nextLine, 2, nextLine.length);
                 typeTopicCounts.put(nextLine[1], topicCounts);
+            }
+
+        } catch (FileNotFoundException e) {
+            System.out.println("Could not open Topic File.");
+            e.printStackTrace();
+        } catch (IOException e) {
+            System.out.println("Could not read next line in Topic File.");
+            e.printStackTrace();
+        }
+        return typeTopicCounts;
+    }
+
+    public static Map<String, Map<Integer, Integer>> readTypeTopicCounts(String fileName) {
+        Map<String,Map<Integer, Integer>> typeTopicCounts = new HashMap<String, Map<Integer, Integer>>();
+        try {
+            CSVReader csvReader = new CSVReader(new FileReader(fileName), ' ');
+            String[] nextLine;
+            while ((nextLine = csvReader.readNext()) != null) {
+                String[] topicCounts = Arrays.copyOfRange(nextLine, 2, nextLine.length);
+                Map<Integer, Integer> finalTopicCounts = new HashMap<Integer, Integer>();
+
+                String[] topicIndexString;
+                for (String topicCount : topicCounts) {
+                    topicIndexString = topicCount.split(":");
+                    Integer topicIndex = Integer.parseInt(topicIndexString[0]);
+                    Integer count = Integer.parseInt(topicIndexString[1]);
+                    finalTopicCounts.put(topicIndex, count);
+                }
+                typeTopicCounts.put(nextLine[1], finalTopicCounts);
             }
 
         } catch (FileNotFoundException e) {

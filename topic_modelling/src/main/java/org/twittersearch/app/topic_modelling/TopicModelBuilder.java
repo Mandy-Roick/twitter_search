@@ -24,7 +24,7 @@ public class TopicModelBuilder {
         Calendar c = Calendar.getInstance();
         c.set(2014, 9, 07); //Months start with 0 :(
         c.add(Calendar.DATE, 1); //08 is for him a too large integer number
-        learnTopicModel3Days(c);
+        learnTopicModel(c);
     }
 
     public static String learnTopicModel(Calendar c) {
@@ -45,8 +45,9 @@ public class TopicModelBuilder {
             String yesterdayTopicsFileName = "trimmed_tm-" + numTopics + "_" + sdf.format(c.getTime())+ "_type_topic_counts.results";
             File yesterdayTopicsFile = new File(yesterdayTopicsFileName);
             if (yesterdayTopicsFile.exists()) {
-                Map<String, Integer> typeTopicCounts = FileReaderHelper.readTypesTopics(yesterdayTopicsFileName);
-                model = new ParallelTopicModelExtension(typeTopicCounts, numTopics, 0.01*numTopics, 0.05);
+                Map<String, Map<Integer, Integer>> typeTopicCounts = FileReaderHelper.readTypeTopicCounts(yesterdayTopicsFileName);
+                Map<String, double[]> typeTopicProbabilites = calculateTypeTopicProbabilites(typeTopicCounts, numTopics);
+                model = new ParallelTopicModelExtension(typeTopicProbabilites, numTopics, 0.01*numTopics, 0.05);
             } else {
                 model = new ParallelTopicModelExtension(numTopics, 0.01*numTopics, 0.05);
             }
@@ -99,6 +100,18 @@ public class TopicModelBuilder {
         }
 
         return filePrefix;
+    }
+
+    private static Map<String, double[]> calculateTypeTopicProbabilites(Map<String, Map<Integer, Integer>> typeTopicCounts, int numTopics) {
+        Map<String, double[]> result = new HashMap<String, double[]>();
+        for (Map.Entry<String, Map<Integer,Integer>> typeTopicCount : typeTopicCounts.entrySet()) {
+            double[] probabilities = new double[numTopics];
+            //TODO: calculate probabilities
+            //TODO: throw out topics which are have topic count < 5% of all topic counts
+
+            result.put(typeTopicCount.getKey(), probabilities);
+        }
+        return result;
     }
 
     public static String learnTopicModel3Days(Calendar endDateCalendar) {

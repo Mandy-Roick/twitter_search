@@ -4,7 +4,6 @@ import org.twittersearch.app.helper.FileReaderHelper;
 import org.twittersearch.app.topic_modelling.TweetPreprocessor;
 
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.ObjectInputStream;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -43,7 +42,7 @@ public class QueryExpander {
         String[] splitQuery = splitQuery(preprocessedQuery);
         String[] postprocessedQuery = postprocessQuery(splitQuery);
 
-        Map<String, String[]> typeTopicCounts = FileReaderHelper.readTopicModel(filePrefix + "_type_topic_counts.results");
+        Map<String, String[]> typeTopicCounts = FileReaderHelper.readTopicModelForExpansion(filePrefix + "_type_topic_counts.results");
         Map<Integer, String[]> topWords = FileReaderHelper.readTopWords(filePrefix + "_top_words.results");
 
         String[][] expandedQuery = expandThroughTopicModel(postprocessedQuery, typeTopicCounts, topWords, numOfTopicsForExpansion, numOfTopWordsPerTopic);
