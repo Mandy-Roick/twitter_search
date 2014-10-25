@@ -50,6 +50,7 @@ public class TweetPreprocessor {
         String normalizedTweet = tweetContent.replace('\n',' ');
         normalizedTweet = normalizedTweet.replace('\r',' ');
         normalizedTweet = normalizedTweet.replace('\"','\'');
+        normalizedTweet = normalizedTweet.replace('#',' ');
 
         // Remove all special characters
         Pattern unicode = Pattern.compile("[^\\x00-\\x7F]",
@@ -92,9 +93,10 @@ public class TweetPreprocessor {
             } else {
                 this.splitHashtags.put(hashtagLowerCase, currentSplitHashtag);
             }
-
-            for (String camelCaseWord : currentSplitHashtag) {
-                concatenatedCamelCaseHashtags += " " + camelCaseWord;
+            if (currentSplitHashtag.length > 1) { //add only split hashtags, if they have more information than the hashtag itself
+                for (String camelCaseWord : currentSplitHashtag) {
+                    concatenatedCamelCaseHashtags += " " + camelCaseWord;
+                }
             }
         }
         return concatenatedCamelCaseHashtags;
