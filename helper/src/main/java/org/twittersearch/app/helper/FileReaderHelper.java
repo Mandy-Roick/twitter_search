@@ -93,12 +93,10 @@ public class FileReaderHelper {
 
         try {
             CSVReader csvReader = new CSVReader(new FileReader(fileName), ',', ' ');
-            int topicIndex = 0;
             String[] nextLine;
             while ((nextLine = csvReader.readNext()) != null) {
                 String[] topWordsForTopic = Arrays.copyOfRange(nextLine, 3, nextLine.length);
                 topWords.put(Integer.parseInt(nextLine[0]), topWordsForTopic);
-                topicIndex++;
             }
 
         } catch (FileNotFoundException e) {
@@ -109,5 +107,26 @@ public class FileReaderHelper {
             e.printStackTrace();
         }
         return topWords;
+    }
+
+    public static Map<Integer, Integer> readTopicCounts(String fileName) {
+        Map<Integer, Integer> topicCounts = new HashMap<Integer, Integer>();
+
+        try {
+            CSVReader csvReader = new CSVReader(new FileReader(fileName), ',', ' ');
+            String[] nextLine;
+            while ((nextLine = csvReader.readNext()) != null) {
+                Integer topicIndex = Integer.parseInt(nextLine[0]);
+                Integer topicCount = Integer.parseInt(nextLine[1]);
+                topicCounts.put(topicIndex, topicCount);
+            }
+        } catch (FileNotFoundException e) {
+            System.out.println("Could not open Topic File.");
+            e.printStackTrace();
+        } catch (IOException e) {
+            System.out.println("Could not read next line in Topic File.");
+            e.printStackTrace();
+        }
+        return topicCounts;
     }
 }

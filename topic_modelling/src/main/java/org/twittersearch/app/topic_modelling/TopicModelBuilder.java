@@ -7,6 +7,7 @@ import cc.mallet.topics.ParallelTopicModel;
 import cc.mallet.types.*;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.twittersearch.app.helper.FileReaderHelper;
+import org.twittersearch.app.helper.TypeContainer;
 
 import java.io.*;
 import java.text.SimpleDateFormat;
@@ -22,8 +23,8 @@ public class TopicModelBuilder {
 
     public static void main(String[] args) {
         Calendar c = Calendar.getInstance();
-        c.set(2014, 9, 07); //Months start with 0 :(
-        c.add(Calendar.DATE, 1); //08 is for him a too large integer number
+        c.set(2014, 9, 05); //Months start with 0 :(
+        //c.add(Calendar.DATE, 1); //08 is for him a too large integer number
         learnTopicModel(c);
     }
 
@@ -32,21 +33,24 @@ public class TopicModelBuilder {
         String inputFileName = "mallet_input_file_" + date + ".csv";
 
         int numTopics = 200;
+        double topicsCutOffPercentage = 0.1;
         String filePrefix = "trimmed_tm-" + numTopics + "_" + date;
 
         try {
 
-            // We need two instanceIterator, because of the word frequencies
             InstanceList instances = createInstances(date, inputFileName, filePrefix);
 
             ParallelTopicModelExtension model;
 
             c.add(Calendar.DATE, -1);
-            String yesterdayTopicsFileName = "trimmed_tm-" + numTopics + "_" + sdf.format(c.getTime())+ "_type_topic_counts.results";
+            String yesterdayTypesFileName = "trimmed_tm-" + numTopics + "_" + sdf.format(c.getTime())+ "_type_topic_counts.results";
+            String yesterdayTopicsFileName = "trimmed_tm-" + numTopics + "_" + sdf.format(c.getTime())+ "_top_words.results";
             File yesterdayTopicsFile = new File(yesterdayTopicsFileName);
             if (yesterdayTopicsFile.exists()) {
-                Map<String, Map<Integer, Integer>> typeTopicCounts = FileReaderHelper.readTypeTopicCounts(yesterdayTopicsFileName);
-                Map<String, double[]> typeTopicProbabilites = calculateTypeTopicProbabilites(typeTopicCounts, numTopics);
+                Map<String, TypeContainer> typeTopicCounts = FileReaderHelper.readTypes(yesterdayTypesFileName);
+                Map<Integer, Integer> topicCounts = FileReaderHelper.readTopicCounts(yesterdayTopicsFileName);
+                List<Integer> ignoreTopics = calculateIgnoreTopics(topicsCutOffPercentage, topicCounts);
+                Map<String, double[]> typeTopicProbabilites = calculateTypeTopicProbabilites(typeTopicCounts, ignoreTopics, numTopics);
                 model = new ParallelTopicModelExtension(typeTopicProbabilites, numTopics, 0.01*numTopics, 0.05);
             } else {
                 model = new ParallelTopicModelExtension(numTopics, 0.01*numTopics, 0.05);
@@ -62,17 +66,7 @@ public class TopicModelBuilder {
             //model.printTopicWordWeights(new File(filePrefix + "_words.results"));
             model.printTypeTopicCounts(new File(filePrefix + "_type_topic_counts.results"));
             //model.printDocumentTopics(new File(filePrefix + "_document_topics.results"));
-            //TopicModelDiagnostics tmd = new TopicModelDiagnostics(model,20);
-            //TopicModelDiagnostics.TopicScores topicScores = tmd.getTokensPerTopic(model.tokensPerTopic);
-            //double[] scores = topicScores.scores;
-            //int counter = 0;
-            //for(double score : scores) {
-            //    System.out.println(counter + ": " + score);
-            //    counter++;
-            //}
-
             TopicContainer[] topics = extractTopicScores(numTopics, model);
-
             writeTopWordsToCsv(filePrefix, model, topics);
 
 
@@ -102,14 +96,29 @@ public class TopicModelBuilder {
         return filePrefix;
     }
 
-    private static Map<String, double[]> calculateTypeTopicProbabilites(Map<String, Map<Integer, Integer>> typeTopicCounts, int numTopics) {
+    private static List<Integer> calculateIgnoreTopics(double cutOffPercentage, Map<Integer, Integer> topicCounts) {
+        List<Integer> ignoreTopics = new LinkedList<Integer>();
+        int overallTopicCountSum = 0;
+        for (Integer count : topicCounts.values()) {
+            overallTopicCountSum += count;
+        }
+
+        for (Map.Entry<Integer, Integer> topicCount : topicCounts.entrySet()) {
+            if (topicCount.getValue() < (overallTopicCountSum*cutOffPercentage)) {
+                ignoreTopics.add(topicCount.getKey());
+            }
+        }
+        return ignoreTopics;
+    }
+
+    private static Map<String, double[]> calculateTypeTopicProbabilites(Map<String, TypeContainer> typeTopicCounts, List<Integer> ignoreTopics, int numTopics) {
         Map<String, double[]> result = new HashMap<String, double[]>();
-        for (Map.Entry<String, Map<Integer,Integer>> typeTopicCount : typeTopicCounts.entrySet()) {
+        for (Map.Entry<String, TypeContainer> type : typeTopicCounts.entrySet()) {
             double[] probabilities = new double[numTopics];
             //TODO: calculate probabilities
-            //TODO: throw out topics which are have topic count < 5% of all topic counts
+            //TODO: throw out topics which have topic count < 5% of all topic counts
 
-            result.put(typeTopicCount.getKey(), probabilities);
+            result.put(type.getKey(), probabilities);
         }
         return result;
     }
@@ -159,6 +168,7 @@ public class TopicModelBuilder {
     }
 
     private static InstanceList createInstances(String date, List<String> inputFileNames, String filePrefix) throws IOException {
+        // We need two instanceIterator, because of the word frequencies
         List<Iterator<Instance>> inputIterators1 = new LinkedList<Iterator<Instance>>();
         List<Iterator<Instance>> inputIterators2 = new LinkedList<Iterator<Instance>>();
         List<Reader> fileReaders = new LinkedList<Reader>();
@@ -304,6 +314,9 @@ public class TopicModelBuilder {
 
         InstanceList prunedInstances = new InstanceList (new SerialPipes(prunedPipeList));
         prunedInstances.addThruPipe(inputIterator2);
+
+        removeSmallDocuments(prunedInstances, 2);
+
         Map<String, String> stemmingDictionary = stemmer.getFinalStemmingDictionary();
         writeStemmingDictionaryFile(filePrefix, stemmingDictionary);
 
@@ -320,6 +333,19 @@ public class TopicModelBuilder {
         return prunedInstances;
     }
 
+    private static void removeSmallDocuments(InstanceList prunedInstances, int minSize) {
+        List<Integer> indicesOfSmallDocuments = new LinkedList<Integer>();
+        for (int i = 0; i < prunedInstances.size(); i++) {
+            if (((FeatureSequence) prunedInstances.get(i).getData()).size() < minSize) {
+                indicesOfSmallDocuments.add(i);
+            }
+        }
+        for (Integer index : indicesOfSmallDocuments) {
+            prunedInstances.remove(index);
+        }
+    }
+
+    // create instance list with multiple input files
     private static InstanceList createInstanceList(List<Iterator<Instance>> inputIterators1, List<Iterator<Instance>> inputIterators2, String filePrefix, boolean writeFrequencies) throws IOException {
         //TODO: write less duplicated code!
         // ideas:   - use prune method from FeatureSequence (but needs the creation of a new Alphabet)
@@ -364,6 +390,9 @@ public class TopicModelBuilder {
         for (Iterator<Instance> inputIterator2 : inputIterators2) {
             prunedInstances.addThruPipe(inputIterator2);
         }
+
+        removeSmallDocuments(prunedInstances, 2);
+
         Map<String, String> stemmingDictionary = stemmer.getFinalStemmingDictionary();
         writeStemmingDictionaryFile(filePrefix, stemmingDictionary);
 
