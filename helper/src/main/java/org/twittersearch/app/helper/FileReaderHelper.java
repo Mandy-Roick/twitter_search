@@ -40,20 +40,19 @@ public class FileReaderHelper {
             CSVReader csvReader = new CSVReader(new FileReader(fileName), ' ');
             String[] nextLine;
             TypeContainer type;
-            while ((nextLine = csvReader.readNext()) != null) {
-                String[] topicCounts = Arrays.copyOfRange(nextLine, 2, nextLine.length);
-                Map<Integer, Integer> finalTopicCounts = new HashMap<Integer, Integer>();
-                int overallTopicCount = 0;
 
-                String[] topicIndexString;
-                for (String topicCount : topicCounts) {
-                    topicIndexString = topicCount.split(":");
-                    Integer topicIndex = Integer.parseInt(topicIndexString[0]);
-                    Integer count = Integer.parseInt(topicIndexString[1]);
-                    overallTopicCount += count;
-                    finalTopicCounts.put(topicIndex, count);
+            nextLine = csvReader.readNext();
+            if (nextLine != null) {
+                if (nextLine[0].equals("Beta:")) {
+                    // ignore this
+                } else {
+                    type = readLineToTypeContainer(nextLine);
+                    types.put(type.getName(), type);
                 }
-                type = new TypeContainer(nextLine[1], overallTopicCount, finalTopicCounts);
+            }
+
+            while ((nextLine = csvReader.readNext()) != null) {
+                type = readLineToTypeContainer(nextLine);
                 types.put(type.getName(), type);
             }
 
@@ -65,6 +64,57 @@ public class FileReaderHelper {
             e.printStackTrace();
         }
         return types;
+    }
+
+    public static BetaAndTypesContainer readTypesAndBeta(String fileName) {
+        Map<String, TypeContainer> types = new HashMap<String, TypeContainer>();
+        double beta = 0;
+        try {
+            CSVReader csvReader = new CSVReader(new FileReader(fileName), ' ');
+            String[] nextLine;
+            TypeContainer type;
+
+            nextLine = csvReader.readNext();
+            if (nextLine != null) {
+                if (nextLine[0].equals("Beta:")) {
+                    beta = Double.parseDouble(nextLine[1]);
+                } else {
+                    type = readLineToTypeContainer(nextLine);
+                    types.put(type.getName(), type);
+                }
+            }
+
+            while ((nextLine = csvReader.readNext()) != null) {
+                type = readLineToTypeContainer(nextLine);
+                types.put(type.getName(), type);
+            }
+
+        } catch (FileNotFoundException e) {
+            System.out.println("Could not open Topic File.");
+            e.printStackTrace();
+        } catch (IOException e) {
+            System.out.println("Could not read next line in Topic File.");
+            e.printStackTrace();
+        }
+        return new BetaAndTypesContainer(beta, types);
+    }
+
+    private static TypeContainer readLineToTypeContainer(String[] nextLine) {
+        TypeContainer type;
+        String[] topicCounts = Arrays.copyOfRange(nextLine, 2, nextLine.length);
+        Map<Integer, Integer> finalTopicCounts = new HashMap<Integer, Integer>();
+        int overallTopicCount = 0;
+
+        String[] topicIndexString;
+        for (String topicCount : topicCounts) {
+            topicIndexString = topicCount.split(":");
+            Integer topicIndex = Integer.parseInt(topicIndexString[0]);
+            Integer count = Integer.parseInt(topicIndexString[1]);
+            overallTopicCount += count;
+            finalTopicCounts.put(topicIndex, count);
+        }
+        type = new TypeContainer(nextLine[1], overallTopicCount, finalTopicCounts);
+        return type;
     }
 
     public static Map<String, Integer> readTypesTopics(String fileName) {

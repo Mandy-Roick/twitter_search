@@ -5,6 +5,7 @@ import cc.mallet.pipe.*;
 import cc.mallet.pipe.iterator.CsvIterator;
 import cc.mallet.types.*;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+import org.twittersearch.app.helper.BetaAndTypesContainer;
 import org.twittersearch.app.helper.FileReaderHelper;
 import org.twittersearch.app.helper.TypeContainer;
 
@@ -22,7 +23,7 @@ public class TopicModelBuilder {
 
     public static void main(String[] args) {
         Calendar c = Calendar.getInstance();
-        c.set(2014, 9, 20); //Months start with 0 :(
+        c.set(2014, 9, 21); //Months start with 0 :(
         //c.add(Calendar.DATE, 1); //08 is for him a too large integer number
         learnTopicModel(c);
     }
@@ -46,10 +47,10 @@ public class TopicModelBuilder {
             String yesterdayTopicsFileName = "trimmed_tm-" + numTopics + "_" + sdf.format(c.getTime())+ "_top_words.results";
             File yesterdayTopicsFile = new File(yesterdayTopicsFileName);
             if (yesterdayTopicsFile.exists()) {
-                Map<String, TypeContainer> typeTopicCounts = FileReaderHelper.readTypes(yesterdayTypesFileName);
+                BetaAndTypesContainer betaAndTypes = FileReaderHelper.readTypesAndBeta(yesterdayTypesFileName);
                 Map<Integer, Integer> topicCounts = FileReaderHelper.readTopicCounts(yesterdayTopicsFileName);
                 List<Integer> ignoreTopics = calculateIgnoreTopics(topicsCutOffPercentage, topicCounts);
-                Map<String, double[]> typeTopicProbabilites = calculateTypesSmoothedTopicCounts(typeTopicCounts, ignoreTopics, numTopics);
+                Map<String, double[]> typeTopicProbabilites = calculateTypesSmoothedTopicCounts(betaAndTypes, ignoreTopics, numTopics);
                 model = new ParallelTopicModelExtension(typeTopicProbabilites, numTopics, 0.01*numTopics, 0.05);
             } else {
                 model = new ParallelTopicModelExtension(numTopics, 0.01*numTopics, 0.05);
@@ -110,15 +111,15 @@ public class TopicModelBuilder {
         return ignoreTopics;
     }
 
-    private static Map<String, double[]> calculateTypesSmoothedTopicCounts(Map<String, TypeContainer> typeTopicCounts, List<Integer> ignoreTopics, int numTopics) {
+    private static Map<String, double[]> calculateTypesSmoothedTopicCounts(BetaAndTypesContainer betaAndTypes, List<Integer> ignoreTopics, int numTopics) {
         Map<String, double[]> result = new HashMap<String, double[]>();
-        for (Map.Entry<String, TypeContainer> type : typeTopicCounts.entrySet()) {
+        for (Map.Entry<String, TypeContainer> type : betaAndTypes.getTypes().entrySet()) {
             double[] smoothedCounts = new double[numTopics];
-            //TODO: calculate probabilities
+            Arrays.fill(smoothedCounts, betaAndTypes.getBeta());
+            for (int topicIndex = 0; topicIndex < numTopics; topicIndex++) {
+                smoothedCounts[topicIndex] += type.getValue().getTopicCountForTopic(topicIndex);
+            }
             //TODO: throw out topics which have topic count < 5% of all topic counts
-            // for (int i = 0; i < numTopics; i++) {
-            //  probabilities[i] = ??; probOfTopicGivenType
-            //}
 
             result.put(type.getKey(), smoothedCounts);
         }
@@ -216,70 +217,6 @@ public class TopicModelBuilder {
         return createInstanceList(inputIterators1, inputIterators2, filePrefix, true);
     }
 
-    // DEPRECATED
-    public static InstanceList createInstanceList(Iterator<Instance> inputIterator1, Iterator<Instance> inputIterator2) throws IOException {
-        return createInstanceList(inputIterator1, inputIterator2, "", false);
-    }
-
-    // DEPRECATED
-    private static InstanceList createInstanceList(Iterator<Instance> inputIterator1, Iterator<Instance> inputIterator2, String filePrefix, boolean writeFrequencies) throws IOException {
-        //TODO: write less duplicated code!
-        // ideas:   - use prune method from FeatureSequence (but needs the creation of a new Alphabet)
-        //          - write my own pipe which is able to do this (probably use two pipes -> one to extract frequencies, one to delete less frequent words)
-        // Create an initial instanceList which can be used to extract the frequencies of words.
-        ArrayList<Pipe> standardPipeList = new ArrayList<Pipe>();
-
-        // Pipes: lowercase, tokenize, remove stopwords, map to features
-        standardPipeList.add(new CharSequenceLowercase());
-        //This pattern filters all sequences of at least 3 literals
-        standardPipeList.add(new CharSequence2TokenSequence(Pattern.compile("[#\\p{L}][\\p{L}\\p{Pd}\\p{M}']+\\p{L}")));
-
-        TokenSequenceRemoveStopwords mySqlStopWordsPipe = new TokenSequenceRemoveStopwords(new File("stop_lists/stop_words_mysql.txt"), "UTF-8", false, false, false);
-        standardPipeList.add(mySqlStopWordsPipe);
-        standardPipeList.add(new StemmerPipe());
-        standardPipeList.add(new TokenSequence2FeatureSequence());
-
-        InstanceList initialInstances = new InstanceList (new SerialPipes(standardPipeList));
-
-        initialInstances.addThruPipe(inputIterator1);
-
-        // Create the final instanceList which contains no words which are in less than 10 tweets.
-        ArrayList<Pipe> prunedPipeList = new ArrayList<Pipe>();
-        prunedPipeList.add(new CharSequenceLowercase());
-        prunedPipeList.add(new CharSequence2TokenSequence(Pattern.compile("[#\\p{L}][\\p{L}\\p{Pd}\\p{M}']+\\p{L}")));
-        prunedPipeList.add(mySqlStopWordsPipe);
-        StemmerPipe stemmer = new StemmerPipe();
-        prunedPipeList.add(stemmer);
-
-        Map<String, Integer> wordFrequencies = getWordFrequencies(initialInstances);
-        List<String> cutOffWords = getCutOffWords(wordFrequencies, 10);
-        TokenSequenceRemoveStopwords cutOffStopWordsPipe = new TokenSequenceRemoveStopwords();
-        cutOffStopWordsPipe.addStopWords(cutOffWords.toArray(new String[cutOffWords.size()]));
-        prunedPipeList.add(cutOffStopWordsPipe);
-
-        prunedPipeList.add(new TokenSequence2FeatureSequence());
-
-        InstanceList prunedInstances = new InstanceList (new SerialPipes(prunedPipeList));
-        prunedInstances.addThruPipe(inputIterator2);
-
-        removeSmallDocuments(prunedInstances, 2);
-
-        Map<String, String> stemmingDictionary = stemmer.getFinalStemmingDictionary();
-        writeStemmingDictionaryFile(filePrefix, stemmingDictionary);
-
-        // sort words after frequencies and write to file if wanted
-        List<Map.Entry<String, Integer>> wordFrequenciesList = new LinkedList<Map.Entry<String, Integer>>(wordFrequencies.entrySet());
-        Collections.sort(wordFrequenciesList, new Comparator<Map.Entry<String, Integer>>() {
-            @Override
-            public int compare(Map.Entry<String, Integer> o1, Map.Entry<String, Integer> o2) {
-                return o2.getValue().compareTo(o1.getValue());
-            }
-        });
-
-        if(writeFrequencies) writeWordFrequenciesToCsv(filePrefix, wordFrequenciesList);
-        return prunedInstances;
-    }
-
     // create instance list with multiple input files
     private static InstanceList createInstanceList(List<Iterator<Instance>> inputIterators1, List<Iterator<Instance>> inputIterators2, String filePrefix, boolean writeFrequencies) throws IOException {
         //TODO: write less duplicated code!
@@ -326,7 +263,7 @@ public class TopicModelBuilder {
             prunedInstances.addThruPipe(inputIterator2);
         }
 
-        removeSmallDocuments(prunedInstances, 2);
+        //removeSmallDocuments(prunedInstances, 2);
 
         Map<String, String> stemmingDictionary = stemmer.getFinalStemmingDictionary();
         writeStemmingDictionaryFile(filePrefix, stemmingDictionary);

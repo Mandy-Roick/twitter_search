@@ -1226,6 +1226,7 @@ public class ParallelTopicModelExtension implements Serializable {
     public void printTypeTopicCounts(File file) throws IOException {
         PrintWriter out = new PrintWriter (new FileWriter (file) );
 
+        out.println("Beta: " + this.beta);
         for (int type = 0; type < numTypes; type++) {
 
             StringBuilder buffer = new StringBuilder();

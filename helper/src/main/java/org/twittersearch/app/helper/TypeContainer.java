@@ -46,4 +46,13 @@ public class TypeContainer {
         return bestTopics.toArray(new Integer[bestTopics.size()]);
 
     }
+
+    public int getTopicCountForTopic(int topicIndex) {
+        Integer topicCount = topicCounts.get(topicIndex);
+        if (topicCount == null) {
+            return 0;
+        } else {
+            return topicCount;
+        }
+    }
 }
