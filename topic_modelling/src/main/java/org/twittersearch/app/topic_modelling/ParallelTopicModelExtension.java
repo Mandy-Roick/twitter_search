@@ -1273,12 +1273,13 @@ public class ParallelTopicModelExtension implements Serializable {
                 double weight = beta;
 
                 int index = 0;
+                // Iterate over all topics for the type but only act when matching topic of the loop is found
                 while (index < topicCounts.length &&
                         topicCounts[index] > 0) {
 
                     int currentTopic = topicCounts[index] & topicMask;
 
-
+                    // weight is initially beta and than you add the topic count
                     if (currentTopic == topic) {
                         weight += topicCounts[index] >> topicBits;
                         break;
