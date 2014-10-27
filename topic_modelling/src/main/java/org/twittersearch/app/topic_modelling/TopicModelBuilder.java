@@ -3,7 +3,6 @@ package org.twittersearch.app.topic_modelling;
 import au.com.bytecode.opencsv.CSVWriter;
 import cc.mallet.pipe.*;
 import cc.mallet.pipe.iterator.CsvIterator;
-import cc.mallet.topics.ParallelTopicModel;
 import cc.mallet.types.*;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.twittersearch.app.helper.FileReaderHelper;
@@ -23,7 +22,7 @@ public class TopicModelBuilder {
 
     public static void main(String[] args) {
         Calendar c = Calendar.getInstance();
-        c.set(2014, 9, 05); //Months start with 0 :(
+        c.set(2014, 9, 20); //Months start with 0 :(
         //c.add(Calendar.DATE, 1); //08 is for him a too large integer number
         learnTopicModel(c);
     }
@@ -50,7 +49,7 @@ public class TopicModelBuilder {
                 Map<String, TypeContainer> typeTopicCounts = FileReaderHelper.readTypes(yesterdayTypesFileName);
                 Map<Integer, Integer> topicCounts = FileReaderHelper.readTopicCounts(yesterdayTopicsFileName);
                 List<Integer> ignoreTopics = calculateIgnoreTopics(topicsCutOffPercentage, topicCounts);
-                Map<String, double[]> typeTopicProbabilites = calculateTypeTopicProbabilites(typeTopicCounts, ignoreTopics, numTopics);
+                Map<String, double[]> typeTopicProbabilites = calculateTypesSmoothedTopicCounts(typeTopicCounts, ignoreTopics, numTopics);
                 model = new ParallelTopicModelExtension(typeTopicProbabilites, numTopics, 0.01*numTopics, 0.05);
             } else {
                 model = new ParallelTopicModelExtension(numTopics, 0.01*numTopics, 0.05);
@@ -111,14 +110,17 @@ public class TopicModelBuilder {
         return ignoreTopics;
     }
 
-    private static Map<String, double[]> calculateTypeTopicProbabilites(Map<String, TypeContainer> typeTopicCounts, List<Integer> ignoreTopics, int numTopics) {
+    private static Map<String, double[]> calculateTypesSmoothedTopicCounts(Map<String, TypeContainer> typeTopicCounts, List<Integer> ignoreTopics, int numTopics) {
         Map<String, double[]> result = new HashMap<String, double[]>();
         for (Map.Entry<String, TypeContainer> type : typeTopicCounts.entrySet()) {
-            double[] probabilities = new double[numTopics];
+            double[] smoothedCounts = new double[numTopics];
             //TODO: calculate probabilities
             //TODO: throw out topics which have topic count < 5% of all topic counts
+            // for (int i = 0; i < numTopics; i++) {
+            //  probabilities[i] = ??; probOfTopicGivenType
+            //}
 
-            result.put(type.getKey(), probabilities);
+            result.put(type.getKey(), smoothedCounts);
         }
         return result;
     }
@@ -167,6 +169,15 @@ public class TopicModelBuilder {
 
     }
 
+    //---------------------------- read input data and put it in an instance list --------------------------------------
+
+    private static InstanceList createInstances(String date, String inputFileName, String filePrefix) throws IOException {
+        List<String> inputFileNames = new LinkedList<String>();
+        inputFileNames.add(inputFileName);
+
+        return createInstances(date, inputFileNames, filePrefix);
+    }
+
     private static InstanceList createInstances(String date, List<String> inputFileNames, String filePrefix) throws IOException {
         // We need two instanceIterator, because of the word frequencies
         List<Iterator<Instance>> inputIterators1 = new LinkedList<Iterator<Instance>>();
@@ -197,12 +208,143 @@ public class TopicModelBuilder {
         return instances;
     }
 
-    private static InstanceList createInstances(String date, String inputFileName, String filePrefix) throws IOException {
-        List<String> inputFileNames = new LinkedList<String>();
-        inputFileNames.add(inputFileName);
+    //private static InstanceList createInstanceList(Iterator<Instance> inputIterator1, Iterator<Instance> inputIterator2, String filePrefix) throws IOException {
+    //    return createInstanceList(inputIterator1, inputIterator2, filePrefix, true);
+    //}
 
-        return createInstances(date, inputFileNames, filePrefix);
+    private static InstanceList createInstanceList(List<Iterator<Instance>> inputIterators1, List<Iterator<Instance>> inputIterators2, String filePrefix) throws IOException {
+        return createInstanceList(inputIterators1, inputIterators2, filePrefix, true);
     }
+
+    // DEPRECATED
+    public static InstanceList createInstanceList(Iterator<Instance> inputIterator1, Iterator<Instance> inputIterator2) throws IOException {
+        return createInstanceList(inputIterator1, inputIterator2, "", false);
+    }
+
+    // DEPRECATED
+    private static InstanceList createInstanceList(Iterator<Instance> inputIterator1, Iterator<Instance> inputIterator2, String filePrefix, boolean writeFrequencies) throws IOException {
+        //TODO: write less duplicated code!
+        // ideas:   - use prune method from FeatureSequence (but needs the creation of a new Alphabet)
+        //          - write my own pipe which is able to do this (probably use two pipes -> one to extract frequencies, one to delete less frequent words)
+        // Create an initial instanceList which can be used to extract the frequencies of words.
+        ArrayList<Pipe> standardPipeList = new ArrayList<Pipe>();
+
+        // Pipes: lowercase, tokenize, remove stopwords, map to features
+        standardPipeList.add(new CharSequenceLowercase());
+        //This pattern filters all sequences of at least 3 literals
+        standardPipeList.add(new CharSequence2TokenSequence(Pattern.compile("[#\\p{L}][\\p{L}\\p{Pd}\\p{M}']+\\p{L}")));
+
+        TokenSequenceRemoveStopwords mySqlStopWordsPipe = new TokenSequenceRemoveStopwords(new File("stop_lists/stop_words_mysql.txt"), "UTF-8", false, false, false);
+        standardPipeList.add(mySqlStopWordsPipe);
+        standardPipeList.add(new StemmerPipe());
+        standardPipeList.add(new TokenSequence2FeatureSequence());
+
+        InstanceList initialInstances = new InstanceList (new SerialPipes(standardPipeList));
+
+        initialInstances.addThruPipe(inputIterator1);
+
+        // Create the final instanceList which contains no words which are in less than 10 tweets.
+        ArrayList<Pipe> prunedPipeList = new ArrayList<Pipe>();
+        prunedPipeList.add(new CharSequenceLowercase());
+        prunedPipeList.add(new CharSequence2TokenSequence(Pattern.compile("[#\\p{L}][\\p{L}\\p{Pd}\\p{M}']+\\p{L}")));
+        prunedPipeList.add(mySqlStopWordsPipe);
+        StemmerPipe stemmer = new StemmerPipe();
+        prunedPipeList.add(stemmer);
+
+        Map<String, Integer> wordFrequencies = getWordFrequencies(initialInstances);
+        List<String> cutOffWords = getCutOffWords(wordFrequencies, 10);
+        TokenSequenceRemoveStopwords cutOffStopWordsPipe = new TokenSequenceRemoveStopwords();
+        cutOffStopWordsPipe.addStopWords(cutOffWords.toArray(new String[cutOffWords.size()]));
+        prunedPipeList.add(cutOffStopWordsPipe);
+
+        prunedPipeList.add(new TokenSequence2FeatureSequence());
+
+        InstanceList prunedInstances = new InstanceList (new SerialPipes(prunedPipeList));
+        prunedInstances.addThruPipe(inputIterator2);
+
+        removeSmallDocuments(prunedInstances, 2);
+
+        Map<String, String> stemmingDictionary = stemmer.getFinalStemmingDictionary();
+        writeStemmingDictionaryFile(filePrefix, stemmingDictionary);
+
+        // sort words after frequencies and write to file if wanted
+        List<Map.Entry<String, Integer>> wordFrequenciesList = new LinkedList<Map.Entry<String, Integer>>(wordFrequencies.entrySet());
+        Collections.sort(wordFrequenciesList, new Comparator<Map.Entry<String, Integer>>() {
+            @Override
+            public int compare(Map.Entry<String, Integer> o1, Map.Entry<String, Integer> o2) {
+                return o2.getValue().compareTo(o1.getValue());
+            }
+        });
+
+        if(writeFrequencies) writeWordFrequenciesToCsv(filePrefix, wordFrequenciesList);
+        return prunedInstances;
+    }
+
+    // create instance list with multiple input files
+    private static InstanceList createInstanceList(List<Iterator<Instance>> inputIterators1, List<Iterator<Instance>> inputIterators2, String filePrefix, boolean writeFrequencies) throws IOException {
+        //TODO: write less duplicated code!
+        // ideas:   - use prune method from FeatureSequence (but needs the creation of a new Alphabet)
+        //          - write my own pipe which is able to do this (probably use two pipes -> one to extract frequencies, one to delete less frequent words)
+        // Create an initial instanceList which can be used to extract the frequencies of words.
+        ArrayList<Pipe> standardPipeList = new ArrayList<Pipe>();
+
+        // Pipes: lowercase, tokenize, remove stopwords, map to features
+        standardPipeList.add(new CharSequenceLowercase());
+        //This pattern filters all sequences of at least 3 literals
+        standardPipeList.add(new CharSequence2TokenSequence(Pattern.compile("[#\\p{L}][\\p{L}\\p{Pd}\\p{M}']+\\p{L}")));
+
+        TokenSequenceRemoveStopwords mySqlStopWordsPipe = new TokenSequenceRemoveStopwords(new File("stop_lists/stop_words_mysql.txt"), "UTF-8", false, false, false);
+        standardPipeList.add(mySqlStopWordsPipe);
+        standardPipeList.add(new StemmerPipe());
+        standardPipeList.add(new TokenSequence2FeatureSequence());
+
+        InstanceList initialInstances = new InstanceList (new SerialPipes(standardPipeList));
+
+        for (Iterator<Instance> inputIterator1 : inputIterators1) {
+            initialInstances.addThruPipe(inputIterator1);
+        }
+
+        // Create the final instanceList which contains no words which are in less than 10 tweets.
+        ArrayList<Pipe> prunedPipeList = new ArrayList<Pipe>();
+        prunedPipeList.add(new CharSequenceLowercase());
+        prunedPipeList.add(new CharSequence2TokenSequence(Pattern.compile("[#\\p{L}][\\p{L}\\p{Pd}\\p{M}']+\\p{L}")));
+        prunedPipeList.add(mySqlStopWordsPipe);
+        StemmerPipe stemmer = new StemmerPipe();
+        prunedPipeList.add(stemmer);
+
+        Map<String, Integer> wordFrequencies = getWordFrequencies(initialInstances);
+        List<String> cutOffWords = getCutOffWords(wordFrequencies, 10);
+        TokenSequenceRemoveStopwords cutOffStopWordsPipe = new TokenSequenceRemoveStopwords();
+        cutOffStopWordsPipe.addStopWords(cutOffWords.toArray(new String[cutOffWords.size()]));
+        prunedPipeList.add(cutOffStopWordsPipe);
+
+        prunedPipeList.add(new TokenSequence2FeatureSequence());
+
+        InstanceList prunedInstances = new InstanceList (new SerialPipes(prunedPipeList));
+
+        for (Iterator<Instance> inputIterator2 : inputIterators2) {
+            prunedInstances.addThruPipe(inputIterator2);
+        }
+
+        removeSmallDocuments(prunedInstances, 2);
+
+        Map<String, String> stemmingDictionary = stemmer.getFinalStemmingDictionary();
+        writeStemmingDictionaryFile(filePrefix, stemmingDictionary);
+
+        // sort words after frequencies and write to file if wanted
+        List<Map.Entry<String, Integer>> wordFrequenciesList = new LinkedList<Map.Entry<String, Integer>>(wordFrequencies.entrySet());
+        Collections.sort(wordFrequenciesList, new Comparator<Map.Entry<String, Integer>>() {
+            @Override
+            public int compare(Map.Entry<String, Integer> o1, Map.Entry<String, Integer> o2) {
+                return o2.getValue().compareTo(o1.getValue());
+            }
+        });
+
+        if(writeFrequencies) writeWordFrequenciesToCsv(filePrefix, wordFrequenciesList);
+        return prunedInstances;
+    }
+
+    //--------------------------------- retrieve data from topic model and write to files ------------------------------
 
     private static TopicContainer[] extractTopicScores(int numTopics, ParallelTopicModelExtension model) {
         TopicContainer[] topics = new TopicContainer[numTopics];
@@ -273,66 +415,6 @@ public class TopicModelBuilder {
         topWordsCsvWriter.close();
     }
 
-    private static InstanceList createInstanceList(Iterator<Instance> inputIterator1, Iterator<Instance> inputIterator2, String filePrefix, boolean writeFrequencies) throws IOException {
-        //TODO: write less duplicated code!
-        // ideas:   - use prune method from FeatureSequence (but needs the creation of a new Alphabet)
-        //          - write my own pipe which is able to do this (probably use two pipes -> one to extract frequencies, one to delete less frequent words)
-        // Create an initial instanceList which can be used to extract the frequencies of words.
-        ArrayList<Pipe> standardPipeList = new ArrayList<Pipe>();
-
-        // Pipes: lowercase, tokenize, remove stopwords, map to features
-        standardPipeList.add(new CharSequenceLowercase());
-        //This pattern filters all sequences of at least 3 literals
-        standardPipeList.add(new CharSequence2TokenSequence(Pattern.compile("[#\\p{L}][\\p{L}\\p{Pd}\\p{M}']+\\p{L}")));
-
-        TokenSequenceRemoveStopwords mySqlStopWordsPipe = new TokenSequenceRemoveStopwords(new File("stop_lists/stop_words_mysql.txt"), "UTF-8", false, false, false);
-        standardPipeList.add(mySqlStopWordsPipe);
-        standardPipeList.add(new StemmerPipe());
-        standardPipeList.add(new TokenSequence2FeatureSequence());
-
-        InstanceList initialInstances = new InstanceList (new SerialPipes(standardPipeList));
-
-        initialInstances.addThruPipe(inputIterator1);
-        // TODO: add second and third inputIterator for second and third day for three day tm
-
-
-        // Create the final instanceList which contains no words which are in less than 10 tweets.
-        ArrayList<Pipe> prunedPipeList = new ArrayList<Pipe>();
-        prunedPipeList.add(new CharSequenceLowercase());
-        prunedPipeList.add(new CharSequence2TokenSequence(Pattern.compile("[#\\p{L}][\\p{L}\\p{Pd}\\p{M}']+\\p{L}")));
-        prunedPipeList.add(mySqlStopWordsPipe);
-        StemmerPipe stemmer = new StemmerPipe();
-        prunedPipeList.add(stemmer);
-
-        Map<String, Integer> wordFrequencies = getWordFrequencies(initialInstances);
-        List<String> cutOffWords = getCutOffWords(wordFrequencies, 10);
-        TokenSequenceRemoveStopwords cutOffStopWordsPipe = new TokenSequenceRemoveStopwords();
-        cutOffStopWordsPipe.addStopWords(cutOffWords.toArray(new String[cutOffWords.size()]));
-        prunedPipeList.add(cutOffStopWordsPipe);
-
-        prunedPipeList.add(new TokenSequence2FeatureSequence());
-
-        InstanceList prunedInstances = new InstanceList (new SerialPipes(prunedPipeList));
-        prunedInstances.addThruPipe(inputIterator2);
-
-        removeSmallDocuments(prunedInstances, 2);
-
-        Map<String, String> stemmingDictionary = stemmer.getFinalStemmingDictionary();
-        writeStemmingDictionaryFile(filePrefix, stemmingDictionary);
-
-        // sort words after frequencies and write to file if wanted
-        List<Map.Entry<String, Integer>> wordFrequenciesList = new LinkedList<Map.Entry<String, Integer>>(wordFrequencies.entrySet());
-        Collections.sort(wordFrequenciesList, new Comparator<Map.Entry<String, Integer>>() {
-            @Override
-            public int compare(Map.Entry<String, Integer> o1, Map.Entry<String, Integer> o2) {
-                return o2.getValue().compareTo(o1.getValue());
-            }
-        });
-
-        if(writeFrequencies) writeWordFrequenciesToCsv(filePrefix, wordFrequenciesList);
-        return prunedInstances;
-    }
-
     private static void removeSmallDocuments(InstanceList prunedInstances, int minSize) {
         List<Integer> indicesOfSmallDocuments = new LinkedList<Integer>();
         for (int i = 0; i < prunedInstances.size(); i++) {
@@ -343,70 +425,6 @@ public class TopicModelBuilder {
         for (Integer index : indicesOfSmallDocuments) {
             prunedInstances.remove(index);
         }
-    }
-
-    // create instance list with multiple input files
-    private static InstanceList createInstanceList(List<Iterator<Instance>> inputIterators1, List<Iterator<Instance>> inputIterators2, String filePrefix, boolean writeFrequencies) throws IOException {
-        //TODO: write less duplicated code!
-        // ideas:   - use prune method from FeatureSequence (but needs the creation of a new Alphabet)
-        //          - write my own pipe which is able to do this (probably use two pipes -> one to extract frequencies, one to delete less frequent words)
-        // Create an initial instanceList which can be used to extract the frequencies of words.
-        ArrayList<Pipe> standardPipeList = new ArrayList<Pipe>();
-
-        // Pipes: lowercase, tokenize, remove stopwords, map to features
-        standardPipeList.add(new CharSequenceLowercase());
-        //This pattern filters all sequences of at least 3 literals
-        standardPipeList.add(new CharSequence2TokenSequence(Pattern.compile("[#\\p{L}][\\p{L}\\p{Pd}\\p{M}']+\\p{L}")));
-
-        TokenSequenceRemoveStopwords mySqlStopWordsPipe = new TokenSequenceRemoveStopwords(new File("stop_lists/stop_words_mysql.txt"), "UTF-8", false, false, false);
-        standardPipeList.add(mySqlStopWordsPipe);
-        standardPipeList.add(new StemmerPipe());
-        standardPipeList.add(new TokenSequence2FeatureSequence());
-
-        InstanceList initialInstances = new InstanceList (new SerialPipes(standardPipeList));
-
-        for (Iterator<Instance> inputIterator1 : inputIterators1) {
-            initialInstances.addThruPipe(inputIterator1);
-        }
-
-        // Create the final instanceList which contains no words which are in less than 10 tweets.
-        ArrayList<Pipe> prunedPipeList = new ArrayList<Pipe>();
-        prunedPipeList.add(new CharSequenceLowercase());
-        prunedPipeList.add(new CharSequence2TokenSequence(Pattern.compile("[#\\p{L}][\\p{L}\\p{Pd}\\p{M}']+\\p{L}")));
-        prunedPipeList.add(mySqlStopWordsPipe);
-        StemmerPipe stemmer = new StemmerPipe();
-        prunedPipeList.add(stemmer);
-
-        Map<String, Integer> wordFrequencies = getWordFrequencies(initialInstances);
-        List<String> cutOffWords = getCutOffWords(wordFrequencies, 10);
-        TokenSequenceRemoveStopwords cutOffStopWordsPipe = new TokenSequenceRemoveStopwords();
-        cutOffStopWordsPipe.addStopWords(cutOffWords.toArray(new String[cutOffWords.size()]));
-        prunedPipeList.add(cutOffStopWordsPipe);
-
-        prunedPipeList.add(new TokenSequence2FeatureSequence());
-
-        InstanceList prunedInstances = new InstanceList (new SerialPipes(prunedPipeList));
-
-        for (Iterator<Instance> inputIterator2 : inputIterators2) {
-            prunedInstances.addThruPipe(inputIterator2);
-        }
-
-        removeSmallDocuments(prunedInstances, 2);
-
-        Map<String, String> stemmingDictionary = stemmer.getFinalStemmingDictionary();
-        writeStemmingDictionaryFile(filePrefix, stemmingDictionary);
-
-        // sort words after frequencies and write to file if wanted
-        List<Map.Entry<String, Integer>> wordFrequenciesList = new LinkedList<Map.Entry<String, Integer>>(wordFrequencies.entrySet());
-        Collections.sort(wordFrequenciesList, new Comparator<Map.Entry<String, Integer>>() {
-            @Override
-            public int compare(Map.Entry<String, Integer> o1, Map.Entry<String, Integer> o2) {
-                return o2.getValue().compareTo(o1.getValue());
-            }
-        });
-
-        if(writeFrequencies) writeWordFrequenciesToCsv(filePrefix, wordFrequenciesList);
-        return prunedInstances;
     }
 
     private static void writeStemmingDictionaryFile(String filePrefix, Map<String, String> stemmingDictionary) {
@@ -421,18 +439,6 @@ public class TopicModelBuilder {
             e.printStackTrace();
         }
 
-    }
-
-    private static InstanceList createInstanceList(Iterator<Instance> inputIterator1, Iterator<Instance> inputIterator2, String filePrefix) throws IOException {
-        return createInstanceList(inputIterator1, inputIterator2, filePrefix, true);
-    }
-
-    private static InstanceList createInstanceList(List<Iterator<Instance>> inputIterator1, List<Iterator<Instance>> inputIterator2, String filePrefix) throws IOException {
-        return createInstanceList(inputIterator1, inputIterator2, filePrefix, true);
-    }
-
-    public static InstanceList createInstanceList(Iterator<Instance> inputIterator1, Iterator<Instance> inputIterator2) throws IOException {
-        return createInstanceList(inputIterator1, inputIterator2, "", false);
     }
 
     private static void writeWordFrequenciesToCsv(String filePrefix, List<Map.Entry<String,Integer>> wordFrequenciesList) throws IOException {
