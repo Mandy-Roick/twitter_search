@@ -4,10 +4,8 @@ import twitter4j.HashtagEntity;
 import twitter4j.Status;
 
 import java.sql.*;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.sql.Date;
+import java.util.*;
 
 /**
  * Created by Mandy Roick on 14.07.2014. according to example by Maximilian Jenders
@@ -394,7 +392,7 @@ public class DBManager {
     }
 
     public List<TweetObject> selectTweetsCreatedAt(String date) {
-        List<TweetObject> tweets = new LinkedList<TweetObject>();
+        List<TweetObject> tweets = new ArrayList<TweetObject>(); // ArrayList because users of this function need random access for sampling
         try {
             Statement statement = connection.createStatement();
             ResultSet result = statement.executeQuery("SELECT id, content, evaluation_flag FROM mandy_masterarbeit.twitter_tweet " +
@@ -568,5 +566,31 @@ public class DBManager {
             e.printStackTrace();
         }
         return tweetsHashtags;
+    }
+
+    // select tweets from day from expertusers for topic x
+    // use tweetObject as return value to include urls etc
+    public List<TweetObject> selectTweetsCreatedAtWithEvaluationFlag(String date, String evaluationFlag) {
+        List<TweetObject> tweets = new LinkedList<TweetObject>();
+        try {
+            Statement statement = connection.createStatement();
+            ResultSet result = statement.executeQuery("SELECT id, content, evaluation_flag FROM mandy_masterarbeit.twitter_tweet " +
+                    "WHERE (created_at = '" + date + "') AND (evaluation_flag = '" + evaluationFlag + "')");
+
+            TweetObject currentTweet;
+            while(result.next()) {
+                long tweetId = result.getLong(1);
+                String tweetContent = result.getString(2);
+                String evaluation_flag = result.getString(3);
+                currentTweet = new TweetObject(tweetId, tweetContent, evaluation_flag);
+                tweets.add(currentTweet);
+            }
+
+            statement.close();
+        } catch (SQLException e) {
+            System.out.println("Could not select tweets from DB which are created at: " + date + "!");
+            e.printStackTrace();
+        }
+        return tweets;
     }
 }

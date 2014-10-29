@@ -2,15 +2,17 @@ package org.twittersearch.app.twitter_api_usage;
 
 import com.google.gson.JsonObject;
 
+import java.util.List;
 import java.util.Map;
 
 /**
  * Created by Mandy Roick on 05.10.2014.
  */
-public class TweetObject {
+public class TweetObject extends Object {
 
     private Long id;
     private String content;
+    private List<String> urlContents;
 
     //public enum EvaluationFlag {none, politics, sports, economy, ebola, football, soccer}
     //private EvaluationFlag flag;
@@ -50,5 +52,25 @@ public class TweetObject {
         tweetObject.addProperty("evaluation_flag", this.flag);
 
         return tweetObject.toString();
+    }
+
+    @Override
+    public String toString() {
+        String result = "";
+        result += this.getId() + ": ";
+        result += this.getContent() + " ";
+        result += "Evaluation Flag: " + this.getFlag();
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        TweetObject tweetObject = (TweetObject) o;
+        return this.id.equals(tweetObject.getId());
+    }
+
+    @Override
+    public int hashCode() {
+        return this.id.hashCode();
     }
 }
