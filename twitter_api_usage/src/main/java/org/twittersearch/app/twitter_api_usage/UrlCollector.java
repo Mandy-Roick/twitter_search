@@ -12,11 +12,16 @@ import java.util.concurrent.*;
 public class UrlCollector {
 
     public static void main(String[] args) {
-        int numberOfThreads = 20;
-        if(args.length == 1) {
+        int numberOfThreads = 3;
+        String date = "2014-10-20";
+        if(args.length >= 1) {
             numberOfThreads = Integer.valueOf(args[0]);
         }
-        collectMissingUrlContents(numberOfThreads);
+        if(args.length >= 2) {
+            date = args[1];
+        }
+
+        collectMissingUrlContentsForDate(date, numberOfThreads);
     }
 
     public static void collectMissingUrlContents(int numberOfThreads) {
@@ -29,9 +34,44 @@ public class UrlCollector {
 
 
         Map<Long, Map<String, Future<String>>> urlFutureTextsForTweets = startUrlThreads(tweetsUrls, executorService);
-        while (!urlFutureTextsForTweets.isEmpty()) {
-            collectUrlThreads(urlFutureTextsForTweets, dbManager);
+        collectUrlThreads(urlFutureTextsForTweets, dbManager);
+
+        executorService.shutdown();
+        try {
+            executorService.awaitTermination(30, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            System.out.println("Interrupted Exception during final termination of threads:");
+            System.out.println(e.toString());
+            //e.printStackTrace();
         }
+
+        System.out.println("Second run of collecting URLs.");
+        collectUrlThreads(urlFutureTextsForTweets, dbManager);
+    }
+
+    public static void collectMissingUrlContentsForDate(String date, int numberOfThreads) {
+        DBManager dbManager = new DBManager();
+        Map<Long, List<String>> tweetsUrls = dbManager.selectTweetsUrlsWithoutTextForDate(date);
+
+        ThreadFactory threadFactory = Executors.defaultThreadFactory();
+        ExecutorService executorService = new ThreadPoolExecutor(numberOfThreads, numberOfThreads+5, 30,
+                TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(tweetsUrls.size()*2), threadFactory);//Executors.newFixedThreadPool(numberOfThreads);
+
+
+        Map<Long, Map<String, Future<String>>> urlFutureTextsForTweets = startUrlThreads(tweetsUrls, executorService);
+        collectUrlThreads(urlFutureTextsForTweets, dbManager);
+
+        executorService.shutdown();
+        try {
+            executorService.awaitTermination(30, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            System.out.println("Interrupted Exception during final termination of threads:");
+            System.out.println(e.toString());
+            //e.printStackTrace();
+        }
+
+        System.out.println("Second run of collecting URLs.");
+        collectUrlThreads(urlFutureTextsForTweets, dbManager);
     }
 
     private static Map<Long, Map<String, Future<String>>> startUrlThreads(Map<Long, List<String>> tweetsUrls, ExecutorService executorService) {
@@ -71,6 +111,7 @@ public class UrlCollector {
             }
             counter++;
         }
+        counter++;
     }
 
     private static boolean writeURLContentToDB(Long tweetId, String url, Future<String> urlContent, DBManager dbManager) {

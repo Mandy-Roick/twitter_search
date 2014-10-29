@@ -488,6 +488,36 @@ public class DBManager {
         return tweetsUrls;
     }
 
+    public Map<Long, List<String>> selectTweetsUrlsWithoutTextForDate(String date) {
+        Map<Long, List<String>> tweetsUrls = new HashMap<Long, List<String>>();
+
+        try {
+            Statement statement = connection.createStatement();
+            ResultSet result = statement.executeQuery("SELECT url, tweet FROM " +
+                    "((SELECT id FROM mandy_masterarbeit.twitter_tweet WHERE created_at = '" + date + "') tweet " +
+                    "INNER JOIN mandy_masterarbeit.twitter_tweet_url url ON tweet.id = url.tweet)" +
+                    "WHERE (has_text = 'f')");
+
+            while(result.next()) {
+                Long tweetId = result.getLong(2);
+                List<String> urls = tweetsUrls.get(tweetId);
+                if(urls == null) {
+                    urls = new LinkedList<String>();
+                }
+                String url = result.getString(1);
+                urls.add(url);
+                tweetsUrls.put(tweetId, urls);
+            }
+
+            statement.close();
+        } catch (SQLException e) {
+            System.out.println("Could not select urls without text!");
+            e.printStackTrace();
+        }
+
+        return tweetsUrls;
+    }
+
     public Long selectHighestIdFromDate(String date) {
         Long highestId = 1L;
         try {
