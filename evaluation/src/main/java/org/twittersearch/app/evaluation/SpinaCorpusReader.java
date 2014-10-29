@@ -1,4 +1,4 @@
-package twitter_search;
+package org.twittersearch.app.evaluation;
 
 import java.io.FileNotFoundException;
 import java.io.FileReader;

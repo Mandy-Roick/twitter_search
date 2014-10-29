@@ -1,4 +1,4 @@
-package twitter_search;
+package org.twittersearch.app.evaluation;
 
 import java.util.HashMap;
 import java.util.List;

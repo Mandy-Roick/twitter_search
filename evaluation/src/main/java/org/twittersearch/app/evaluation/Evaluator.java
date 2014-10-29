@@ -1,4 +1,4 @@
-package twitter_search;
+package org.twittersearch.app.evaluation;
 
 /**
  * Hello world!

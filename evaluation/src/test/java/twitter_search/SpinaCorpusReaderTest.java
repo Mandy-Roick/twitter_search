@@ -4,7 +4,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import twitter_search.SpinaCorpusReader;
+import org.twittersearch.app.evaluation.SpinaCorpusReader;
 
 public class SpinaCorpusReaderTest {
 
