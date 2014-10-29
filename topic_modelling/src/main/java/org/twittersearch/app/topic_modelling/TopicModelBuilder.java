@@ -33,7 +33,7 @@ public class TopicModelBuilder {
         String inputFileName = "mallet_input_file_" + date + ".csv";
 
         int numTopics = 200;
-        double topicsCutOffPercentage = 0.1;
+        double topicsCutOffPercentage = 0.5/200.0;
         String filePrefix = "trimmed_tm-" + numTopics + "_" + date;
 
         try {
@@ -103,8 +103,9 @@ public class TopicModelBuilder {
             overallTopicCountSum += count;
         }
 
+        double cutOffTopicCount = overallTopicCountSum*cutOffPercentage;
         for (Map.Entry<Integer, Integer> topicCount : topicCounts.entrySet()) {
-            if (topicCount.getValue() < (overallTopicCountSum*cutOffPercentage)) {
+            if (topicCount.getValue() < (cutOffTopicCount)) {
                 ignoreTopics.add(topicCount.getKey());
             }
         }
