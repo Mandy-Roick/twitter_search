@@ -105,6 +105,33 @@ public class TopicSearchEngine {
         return tweets;
     }
 
+    public static Map<TopicContainer, List<String>> searchForTweetsViaES(List<TopicContainer> topicsForExpansion, ElasticSearchManager esManager, int numberOfTopWords) {
+        Map<TopicContainer, List<String>> relevantTweets = new HashMap<TopicContainer, List<String>>();
+
+        SearchHits searchHits;
+        for (TopicContainer topicForExpansion : topicsForExpansion) {
+            List<String> currentTweets = new LinkedList<String>();
+
+            String[] topicQuery = topicForExpansion.getTopWords(numberOfTopWords);
+
+            String twitterQuery = "";
+            for (String queryElement : topicQuery) {
+                twitterQuery += queryElement + " ";
+            }
+            System.out.println("--------------------" + twitterQuery + "-------------------------------");
+            searchHits = esManager.searchFor(twitterQuery);
+
+            for (SearchHit searchHit : searchHits) {
+                currentTweets.add(searchHit.getSource().toString());
+                System.out.println(searchHit.getSource());
+            }
+
+            relevantTweets.put(topicForExpansion, currentTweets);
+        }
+
+        return relevantTweets;
+    }
+
     public static List<String> searchForTweetsViaESInSample(String[][] expandedQuery, ElasticSearchManager esManager, List<String> sampledTweets) {
         List<String> tweets = new ArrayList<String>();
 

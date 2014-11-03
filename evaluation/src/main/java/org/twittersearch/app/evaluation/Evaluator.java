@@ -1,20 +1,19 @@
 package org.twittersearch.app.evaluation;
 
 import cc.mallet.pipe.iterator.ArrayIterator;
-import cc.mallet.pipe.iterator.CsvIterator;
 import cc.mallet.topics.TopicInferencer;
 import cc.mallet.types.Instance;
 import cc.mallet.types.InstanceList;
 import org.twittersearch.app.helper.FileReaderHelper;
 import org.twittersearch.app.search_engine.ElasticSearchManager;
 import org.twittersearch.app.search_engine.TopicSearchEngine;
+import org.twittersearch.app.topic_modelling.TopicContainer;
 import org.twittersearch.app.topic_modelling.TopicModelBuilder;
 import org.twittersearch.app.twitter_api_usage.DBManager;
 import org.twittersearch.app.twitter_api_usage.TweetObject;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.regex.Pattern;
 
 /**
  * Created by Mandy Roick.
@@ -78,19 +77,24 @@ public class Evaluator
 
         // 1. Find relevant tweets and topic index for those
         String date = "2014-10-21";
-        Map<Long, TweetObject> tweets = this.dbManager.selectTweetsCreatedAt(date);
         //esManager.addToIndex(date);
-        String[][] expandedQuery = TopicSearchEngine.expandQueryForGivenDate(query, "2014-10-20");
-        List<String> relevantTweets = TopicSearchEngine.searchForTweetsViaES(expandedQuery, this.esManager);
+        List<TopicContainer> expandedQuery = TopicSearchEngine.expandQueryForGivenDateWithTopicIndices(query, "2014-10-20");
+        // TODO: restrict the elastic search to one day
+        Map<TopicContainer, List<String>> relevantTweets = TopicSearchEngine.searchForTweetsViaES(expandedQuery, this.esManager, 3);
 
         // 2. calculateTopicInferencing for relevant tweets
+        String filePrefix = "trimmed_tm-" + 200 + "_" + date;
+        for (Map.Entry<TopicContainer, List<String>> topicTweets : relevantTweets.entrySet()) {
+            double[][] sampledDistributions = calculateTopicInferencing(filePrefix, topicTweets.getValue());
+            // sampledDistribution auswerten --> trifft es das Topic aus TopicContainer
+        }
 
-        // 3. evaluate whether the real topic index has good probability in the distribution
+        // 3. add up all results and give a final double value as evaluation
 
         return 0.0;
     }
 
-    public double[][] calculateTopicInferencing(String filePrefix, int topic, List<String> relevantTweets) {
+    public double[][] calculateTopicInferencing(String filePrefix, List<String> relevantTweets) {
         List<double[]> topicDistributions = new LinkedList<double[]>();
         TopicInferencer topicInferencer = FileReaderHelper.readTopicInferencer(filePrefix);
         int numberOfIteration = 500;
