@@ -10,6 +10,7 @@ import org.elasticsearch.index.query.*;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
 
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -26,15 +27,15 @@ public class ElasticSearchManager {
         TransportClient client = new TransportClient(settings);
         client = client.addTransportAddress(new InetSocketTransportAddress("localhost", 9300));
 
-        ElasticSearchIndexer.indexingFromDB("2014-10-09", client);
+        ElasticSearchIndexer.indexingFromDB("2014-10-21", client);
 
         //GetResponse getResponse = client.prepareGet("twitter", "tweet", "518695575102164993")
         //        .execute()
         //        .actionGet();
         //System.out.println(getResponse.getSource());
 
-        ElasticSearchManager esManager = new ElasticSearchManager();
-        esManager.searchFor("politics");
+        //ElasticSearchManager esManager = new ElasticSearchManager();
+        //esManager.searchFor("politics");
         client.close();
     }
 
@@ -43,6 +44,10 @@ public class ElasticSearchManager {
         TransportClient transportClient = new TransportClient(settings);
         transportClient = transportClient.addTransportAddress(new InetSocketTransportAddress("localhost", 9300));
         this.client = transportClient;
+    }
+
+    public void addToIndex(String date) {
+        ElasticSearchIndexer.indexingFromDB(date, this.client);
     }
 
     public void searchFor(String query) {
@@ -57,7 +62,7 @@ public class ElasticSearchManager {
         }
     }
 
-    public void searchForInSample(String query, List<Integer> sampledIDs) {
+    public SearchHits searchForInSample(String query, Collection<String> sampledIDs) {
         FilterBuilder filterBuilder = FilterBuilders.idsFilter("tweet").addIds(sampledIDs.toArray(new String[sampledIDs.size()]));
         QueryBuilder queryBuilder = QueryBuilders.multiMatchQuery(query, "content", "url_content"); // first query, than fields I query on
         FilteredQueryBuilder filteredQueryBuilder = QueryBuilders.filteredQuery(queryBuilder, filterBuilder);
@@ -66,11 +71,12 @@ public class ElasticSearchManager {
                 .setFrom(0)
                 .setSize(60).execute().actionGet();
 
-        SearchHits searchHits = response.getHits();
-        System.out.println(searchHits.totalHits());
-        for (SearchHit searchHit : searchHits) {
-            //System.out.println(searchHit.getId());
-            System.out.println(searchHit.getId() + ": " + searchHit.getScore() + " : " + searchHit.getSource());
-        }
+        return response.getHits();
+//        SearchHits searchHits = response.getHits();
+//        System.out.println(searchHits.totalHits());
+//        for (SearchHit searchHit : searchHits) {
+//            //System.out.println(searchHit.getId());
+//            System.out.println(searchHit.getId() + ": " + searchHit.getScore() + " : " + searchHit.getSource());
+//        }
     }
 }

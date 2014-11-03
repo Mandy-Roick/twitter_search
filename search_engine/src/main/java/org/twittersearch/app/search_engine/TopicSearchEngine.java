@@ -1,12 +1,13 @@
 package org.twittersearch.app.search_engine;
 
+import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.SearchHits;
 import org.twittersearch.app.topic_modelling.TopicModelBuilder;
 import org.twittersearch.app.twitter_api_usage.TwitterManager;
 import twitter4j.TwitterException;
 
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
+import java.util.*;
 
 /**
  * Created by Mandy Roick on 10.10.2014.
@@ -55,7 +56,7 @@ public class TopicSearchEngine {
         return expandedQuery;
     }
 
-    private static void searchForTweets(String[][] expandedQuery) {
+    public static void searchForTweets(String[][] expandedQuery) {
         TwitterManager twitterManager = new TwitterManager();
         for (String[] topicQuery : expandedQuery) {
             try {
@@ -72,8 +73,7 @@ public class TopicSearchEngine {
         }
     }
 
-    private static void searchForTweetsViaES(String[][] expandedQuery) {
-        ElasticSearchManager esManager = new ElasticSearchManager();
+    public static void searchForTweetsViaES(String[][] expandedQuery, ElasticSearchManager esManager) {
         for (String[] topicQuery : expandedQuery) {
             String twitterQuery = "";
             for (String queryElement : topicQuery) {
@@ -82,6 +82,26 @@ public class TopicSearchEngine {
             System.out.println("--------------------" + twitterQuery + "-------------------------------");
             esManager.searchFor(twitterQuery);
         }
+    }
+
+    public static List<String> searchForTweetsViaESInSample(String[][] expandedQuery, ElasticSearchManager esManager, List<String> sampledTweets) {
+        List<String> tweets = new ArrayList<String>();
+
+        SearchHits searchHits;
+        for (String[] topicQuery : expandedQuery) {
+            String twitterQuery = "";
+            for (String queryElement : topicQuery) {
+                twitterQuery += queryElement + " ";
+            }
+            System.out.println("--------------------" + twitterQuery + "-------------------------------");
+            searchHits = esManager.searchForInSample(twitterQuery, sampledTweets);
+
+            for (SearchHit searchHit : searchHits) {
+                tweets.add(searchHit.getSource().toString());
+            }
+        }
+
+        return tweets;
     }
 
     public static Calendar getDateOfYesterday() {
