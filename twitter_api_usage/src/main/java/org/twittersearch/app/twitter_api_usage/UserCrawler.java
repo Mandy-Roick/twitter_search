@@ -1,7 +1,6 @@
 package org.twittersearch.app.twitter_api_usage;
 
 import au.com.bytecode.opencsv.CSVReader;
-import com.sun.jna.platform.win32.Netapi32Util;
 import twitter4j.Paging;
 import twitter4j.ResponseList;
 import twitter4j.Status;
@@ -21,7 +20,7 @@ public class UserCrawler {
     private DBManager dbManager;
 
     public static void main(String[] args) {
-        String userIdsFileName = "input_data/userIds_politics.csv";
+        String userIdsFileName = "input_data/userIds_new_2014_10_23.csv";
         UserCrawler crawler = new UserCrawler();
 
         if (args.length == 1) {
@@ -40,11 +39,11 @@ public class UserCrawler {
             List<String[]> users = csvReader.readAll();
 
             Long currentUserId;
-            Long highestCrawledId;
+            Long highestCrawledId = 1L;
 
             for (String[] user : users) {
                 currentUserId = Long.parseLong(user[1]);
-                highestCrawledId = dbManager.selectHighestIdFromUser(currentUserId);
+                //highestCrawledId = dbManager.selectHighestIdFromUser(currentUserId);
                 crawlAllUserTweets(currentUserId, highestCrawledId, user[2]);
             }
 
@@ -112,7 +111,6 @@ public class UserCrawler {
      * Makes a single API call to retieve user statuses
      * @param userID the userID
      * @param paging the paging used
-     * @return
      */
     public ResponseList<Status> getStatuses(long userID, Paging paging) {
         ResponseList<Status> statuses = null;
