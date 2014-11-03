@@ -54,12 +54,14 @@ public class ElasticSearchManager {
                                                              .setFrom(0)
                                                              .setSize(60).execute().actionGet();
         return response.getHits();
-//        SearchHits searchHits = response.getHits();
-//        System.out.println(searchHits.totalHits());
-//        for (SearchHit searchHit : searchHits) {
-//            //System.out.println(searchHit.getId());
-//            System.out.println(searchHit.getId() + ": " + searchHit.getScore() + " : " + searchHit.getSource());
-//        }
+    }
+
+    public SearchHits searchFor(String query, String date) {
+        // TODO: use the date and search only in tweets from that date => need to google how elastic search handles dates
+        SearchResponse response = this.client.prepareSearch().setQuery(QueryBuilders.matchQuery("content", query))
+                .setFrom(0)
+                .setSize(60).execute().actionGet();
+        return response.getHits();
     }
 
     public SearchHits searchForInSample(String query, Collection<String> sampledIDs) {

@@ -105,7 +105,8 @@ public class TopicSearchEngine {
         return tweets;
     }
 
-    public static Map<TopicContainer, List<String>> searchForTweetsViaES(List<TopicContainer> topicsForExpansion, ElasticSearchManager esManager, int numberOfTopWords) {
+    public static Map<TopicContainer, List<String>> searchForTweetsViaES(List<TopicContainer> topicsForExpansion, String date,
+                                                                         ElasticSearchManager esManager, int numberOfTopWords) {
         Map<TopicContainer, List<String>> relevantTweets = new HashMap<TopicContainer, List<String>>();
 
         SearchHits searchHits;
@@ -119,7 +120,7 @@ public class TopicSearchEngine {
                 twitterQuery += queryElement + " ";
             }
             System.out.println("--------------------" + twitterQuery + "-------------------------------");
-            searchHits = esManager.searchFor(twitterQuery);
+            searchHits = esManager.searchFor(twitterQuery, date);
 
             for (SearchHit searchHit : searchHits) {
                 currentTweets.add(searchHit.getSource().toString());

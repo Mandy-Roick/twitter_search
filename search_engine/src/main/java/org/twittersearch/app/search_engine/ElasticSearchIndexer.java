@@ -15,7 +15,7 @@ import java.util.Map;
  */
 public class ElasticSearchIndexer {
 
-    public static void indexingFromInputFile(String date, Client client) {
+    public static void indexFromInputFile(String date, Client client) {
         String inputFileName = "mallet_input_file_" + date + ".csv";
 
         try {

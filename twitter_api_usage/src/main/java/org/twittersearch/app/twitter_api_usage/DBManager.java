@@ -403,7 +403,7 @@ public class DBManager {
                 long tweetId = result.getLong(1);
                 String tweetContent = result.getString(2);
                 String evaluation_flag = result.getString(3);
-                currentTweet = new TweetObject(tweetId, tweetContent, evaluation_flag);
+                currentTweet = new TweetObject(tweetId, tweetContent, evaluation_flag, date);
                 tweets.put(tweetId, currentTweet);
             }
 
@@ -640,7 +640,7 @@ public class DBManager {
                 long tweetId = result.getLong(1);
                 String tweetContent = result.getString(2);
                 String evaluation_flag = result.getString(3);
-                currentTweet = new TweetObject(tweetId, tweetContent, evaluation_flag);
+                currentTweet = new TweetObject(tweetId, tweetContent, evaluation_flag, date);
                 tweets.add(currentTweet);
             }
 

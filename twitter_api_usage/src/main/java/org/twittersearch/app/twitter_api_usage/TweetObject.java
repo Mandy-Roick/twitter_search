@@ -16,6 +16,7 @@ public class TweetObject extends Object {
 
     private Long id;
     private String content;
+    private String createdAt;
     private List<String> urlContents;
 
     //public enum EvaluationFlag {none, politics, sports, economy, ebola, football, soccer}
@@ -23,19 +24,12 @@ public class TweetObject extends Object {
     private String flag;
     //private Map<String, String> urls;
 
-    public TweetObject(Long id, String content, String evaluationFlag) {
+    public TweetObject(Long id, String content, String evaluationFlag, String createdAt) {
         this.id = id;
         this.content = content;
         this.flag = evaluationFlag;
+        this.createdAt = createdAt;
         this.urlContents = new LinkedList<String>();
-
-        //if (evaluationFlag.equals("politics")) this.flag = EvaluationFlag.politics;
-        //else if (evaluationFlag.equals("sports")) this.flag = EvaluationFlag.sports;
-        //else if (evaluationFlag.equals("economy")) this.flag = EvaluationFlag.economy;
-        //else if (evaluationFlag.equals("ebola")) this.flag = EvaluationFlag.ebola;
-        //else if (evaluationFlag.equals("football")) this.flag = EvaluationFlag.football;
-        //else if (evaluationFlag.equals("soccer")) this.flag = EvaluationFlag.soccer;
-        //else this.flag = EvaluationFlag.none;
     }
 
     public Long getId() {
@@ -63,6 +57,7 @@ public class TweetObject extends Object {
         tweetObject.addProperty("id", this.id);
         tweetObject.addProperty("content", "\"" + this.content + "\"");
         tweetObject.addProperty("evaluation_flag", this.flag);
+        tweetObject.addProperty("created_at", this.createdAt);
 
         if (!urlContents.isEmpty()) {
             JsonArray urlsObject = new JsonArray();
