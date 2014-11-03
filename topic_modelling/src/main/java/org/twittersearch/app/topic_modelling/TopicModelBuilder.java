@@ -307,7 +307,7 @@ public class TopicModelBuilder {
         TopicContainer[] topics = new TopicContainer[numTopics];
 
         for (int i = 0; i < topics.length; i++) {
-            topics[i] = new TopicContainer(i);
+            topics[i] = new TopicContainer(i, 0, 0);
         }
 
         for (int typeIndex = 0; typeIndex < model.numTypes; typeIndex++) {

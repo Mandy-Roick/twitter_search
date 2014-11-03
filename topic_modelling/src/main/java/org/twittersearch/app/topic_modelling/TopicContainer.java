@@ -3,26 +3,30 @@ package org.twittersearch.app.topic_modelling;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Created by Mandy Roick on 19.08.2014.
  */
 public class TopicContainer implements Comparable {
 
-    private int score = 0;
-    private int numberOfWords = 0;
+    private int score = 0; // this is the topic count
+    private int numberOfWords = 0; // this is for counting the number of words in the topic
     private int id;
     private String[] topWords;
 
-    public TopicContainer(int id) {
-        this.id = id;
-        this.score = 0;
-        this.numberOfWords = 0;
+    public TopicContainer(int id, int score, int numberOfWords) {
+        this(id, score, numberOfWords, null);
     }
 
-    public TopicContainer(int id, int score, String[] topWords) {
+    public TopicContainer(int id, String[] topWords) {
+        this(id, -1, -1, topWords); // assume numberOfWords and score is not needed
+    }
+
+    private TopicContainer(int id, int score, int numberOfWords, String[] topWords) {
         this.id = id;
         this.score = score;
+        this.numberOfWords = numberOfWords;
         this.topWords = topWords;
     }
 
@@ -37,6 +41,10 @@ public class TopicContainer implements Comparable {
     public String[] getTopWords() {
         assert(this.topWords != null);
         return this.topWords;
+    }
+
+    public String[] getTopWords(int numberOfTopWords) {
+        return Arrays.copyOfRange(this.getTopWords(), 0, numberOfTopWords);
     }
 
     public String[] getScoreAndTopWordsAsLine() {
@@ -58,6 +66,16 @@ public class TopicContainer implements Comparable {
 
     public void setTopWords(String[] topWords) {
         this.topWords = topWords;
+    }
+
+    public void unstemmTopWords(Map<String, String> stemmingDictionary) {
+        String originalWord;
+        for (int i = 0; i < this.topWords.length; i++) {
+            originalWord = stemmingDictionary.get(this.topWords[i]);
+            if (originalWord != null) {
+                this.topWords[i] = originalWord;
+            }
+        }
     }
 
     @Override

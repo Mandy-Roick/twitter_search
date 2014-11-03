@@ -43,7 +43,7 @@ public class TopicSearchEngine {
         //}
 
         String filePrefix = TopicModelBuilder.learnTopicModel(calendarOfYesterday);
-        String[][] expandedQuery = QueryExpander.expand(query, 0.1, 3, filePrefix);
+        String[][] expandedQuery = QueryExpander.expand(query, 0.05, 3, filePrefix);
 
         return expandedQuery;
     }
@@ -52,19 +52,19 @@ public class TopicSearchEngine {
 
         //String filePrefix = TopicModelBuilder.learnTopicModel(calendarOfYesterday);
         String filePrefix = "trimmed_tm-200_" + date;
-        String[][] expandedQuery = QueryExpander.expand(query, 0.1, 3, filePrefix);
+        String[][] expandedQuery = QueryExpander.expand(query, 0.05, 3, filePrefix);
 
         return expandedQuery;
     }
 
-//    public static List<TopicContainer> expandQueryForGivenDateWithTopicIndices(String query, String date) {
-//
-//        //String filePrefix = TopicModelBuilder.learnTopicModel(calendarOfYesterday);
-//        String filePrefix = "trimmed_tm-200_" + date;
-//        List<TopicContainer> expandedQuery = QueryExpander.expand(query, 0.1, 3, filePrefix);
-//
-//        return expandedQuery;
-//    }
+    public static List<TopicContainer> expandQueryForGivenDateWithTopicIndices(String query, String date) {
+
+        //String filePrefix = TopicModelBuilder.learnTopicModel(calendarOfYesterday);
+        String filePrefix = "trimmed_tm-200_" + date;
+        List<TopicContainer> expandedQuery = QueryExpander.expand(query, 0.05, filePrefix);
+
+        return expandedQuery;
+    }
 
     public static void searchForTweets(String[][] expandedQuery) {
         TwitterManager twitterManager = new TwitterManager();

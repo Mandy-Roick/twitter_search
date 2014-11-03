@@ -2,6 +2,7 @@ package org.twittersearch.app.search_engine;
 
 import org.twittersearch.app.helper.FileReaderHelper;
 import org.twittersearch.app.helper.TypeContainer;
+import org.twittersearch.app.topic_modelling.TopicContainer;
 import org.twittersearch.app.topic_modelling.TweetPreprocessor;
 
 import java.io.FileInputStream;
@@ -39,55 +40,54 @@ public class QueryExpander {
 
     // TODO: test with different topicPercentageThresholds - 10% is for sports probably to big
     public static String[][] expand(String query, double topicPercentageThreshold, int numOfTopWordsPerTopic, String filePrefix) {
+        List<TopicContainer> topicsForExpansion = expand(query, topicPercentageThreshold, filePrefix);
+        List<String[]> expandedQuery = new ArrayList<String[]>();
 
-        // Process Query
-        String preprocessedQuery = preprocessQuery(query);
-        String[] splitQuery = splitQuery(preprocessedQuery);
-        String[] postprocessedQuery = postprocessQuery(splitQuery);
+        for (TopicContainer topicForExpansion : topicsForExpansion) {
+            expandedQuery.add(topicForExpansion.getTopWords(numOfTopWordsPerTopic));
+        }
+
+        return expandedQuery.toArray(new String[expandedQuery.size()][]);
+    }
+
+    public static List<TopicContainer> expand(String query, double topicPercentageThreshold, String filePrefix) {
+        String[] processedQuery = processQuery(query);
 
         Map<String, TypeContainer> types = FileReaderHelper.readTypes(filePrefix);
         Map<Integer, String[]> topWords = FileReaderHelper.readTopWords(filePrefix);
 
-        String[][] expandedQuery = expandThroughTopicModel(postprocessedQuery, types, topWords, topicPercentageThreshold, numOfTopWordsPerTopic);
+        List<TopicContainer> topicsForExpansion = expandThroughTopicModel(processedQuery, types, topWords, topicPercentageThreshold);
         Map<String, String> stemmingDictionary = FileReaderHelper.readStemmingDictionary(filePrefix);
 
-        String originalWord;
-        for (int i = 0; i < expandedQuery.length; i++) {
-            for (int j = 0; j < expandedQuery[i].length; j++) {
-                originalWord = stemmingDictionary.get(expandedQuery[i][j]);
-                if (originalWord != null) {
-                    expandedQuery[i][j] = originalWord;
-                }
-            }
+        for (TopicContainer topicForExpansion : topicsForExpansion) {
+            topicForExpansion.unstemmTopWords(stemmingDictionary);
         }
 
-        return expandedQuery;
+        return topicsForExpansion;
     }
 
-    private static String[][] expandThroughTopicModel(String[] query, Map<String, TypeContainer> types, Map<Integer,
-                                                    String[]> topWords, double topicPercentageThreshold, int numOfTopWordsPerTopic) {
-        List<String[]> expandedQuery = new ArrayList<String[]>();
+    private static String[] processQuery(String query) {
+        String preprocessedQuery = preprocessQuery(query);
+        String[] splitQuery = splitQuery(preprocessedQuery);
+        return postprocessQuery(splitQuery);
+    }
+
+    // Important to have a list as return value to hold the order
+    private static List<TopicContainer> expandThroughTopicModel(String[] query, Map<String, TypeContainer> types, Map<Integer,String[]> topWords, double topicPercentageThreshold) {
+        List<TopicContainer> topicsForExpansion = new ArrayList<TopicContainer>();
 
         for (String queryElement : query) {
-            //ToDo: add the query itself somehow, because only now it is normalized
-            //expandedQuery.add(queryElement);
-
             TypeContainer typeContainer = types.get(queryElement);
             if (typeContainer != null) {
 
                 Integer[] topicIndices = typeContainer.getBestTopics(topicPercentageThreshold);
-                String[] topWordsForTopic;
                 for (Integer topicIndex : topicIndices) {
-                    String[] expandedTopicQuery = new String[numOfTopWordsPerTopic];
-                    topWordsForTopic = topWords.get(topicIndex);
-                    for (int j = 0; (j < topWordsForTopic.length) && (j < numOfTopWordsPerTopic); j++) {
-                        expandedTopicQuery[j] = topWordsForTopic[j];
-                    }
-                    expandedQuery.add(expandedTopicQuery);
+                    TopicContainer topicForExpansion = new TopicContainer(topicIndex, topWords.get(topicIndex));
+                    topicsForExpansion.add(topicForExpansion);
                 }
             }
         }
-        return expandedQuery.toArray(new String[expandedQuery.size()][]);
+        return topicsForExpansion;
     }
 
     private static String[] postprocessQuery(String[] splitQuery) {
