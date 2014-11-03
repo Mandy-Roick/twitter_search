@@ -11,7 +11,6 @@ import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
 
 import java.util.Collection;
-import java.util.List;
 
 /**
  * Created by Mandy Roick on 02.10.2014.
@@ -27,7 +26,7 @@ public class ElasticSearchManager {
         TransportClient client = new TransportClient(settings);
         client = client.addTransportAddress(new InetSocketTransportAddress("localhost", 9300));
 
-        ElasticSearchIndexer.indexingFromDB("2014-10-21", client);
+        ElasticSearchIndexer.indexFromDB("2014-10-21", client);
 
         //GetResponse getResponse = client.prepareGet("twitter", "tweet", "518695575102164993")
         //        .execute()
@@ -47,19 +46,20 @@ public class ElasticSearchManager {
     }
 
     public void addToIndex(String date) {
-        ElasticSearchIndexer.indexingFromDB(date, this.client);
+        ElasticSearchIndexer.indexFromDBWithUrls(date, this.client);
     }
 
-    public void searchFor(String query) {
+    public SearchHits searchFor(String query) {
         SearchResponse response = this.client.prepareSearch().setQuery(QueryBuilders.matchQuery("content", query))
                                                              .setFrom(0)
                                                              .setSize(60).execute().actionGet();
-        SearchHits searchHits = response.getHits();
-        System.out.println(searchHits.totalHits());
-        for (SearchHit searchHit : searchHits) {
-            //System.out.println(searchHit.getId());
-            System.out.println(searchHit.getId() + ": " + searchHit.getScore() + " : " + searchHit.getSource());
-        }
+        return response.getHits();
+//        SearchHits searchHits = response.getHits();
+//        System.out.println(searchHits.totalHits());
+//        for (SearchHit searchHit : searchHits) {
+//            //System.out.println(searchHit.getId());
+//            System.out.println(searchHit.getId() + ": " + searchHit.getScore() + " : " + searchHit.getSource());
+//        }
     }
 
     public SearchHits searchForInSample(String query, Collection<String> sampledIDs) {

@@ -44,14 +44,42 @@ public class ElasticSearchIndexer {
 
     }
 
-    public static void indexingFromDB(String date, Client client) {
+    public static void indexFromDB(String date, Client client) {
         DBManager dbManager = new DBManager();
-        List<TweetObject> tweets = dbManager.selectTweetsCreatedAt(date);
+        Map<Long, TweetObject> tweets = dbManager.selectTweetsCreatedAt(date);
 
         String json;
         IndexResponse indexResponse;
         int counter = 0;
-        for (TweetObject tweet : tweets) {
+        for (TweetObject tweet : tweets.values()) {
+            json = tweet.toJson();
+            indexResponse = client.prepareIndex("twitter", "tweet", tweet.getId().toString()).setSource(json).execute().actionGet();
+            if(indexResponse.isCreated()) {
+                if((counter % 10000) == 0) {
+                    System.out.println(counter + ": " + indexResponse.getId());
+                }
+                counter++;
+            }
+        }
+
+    }
+
+    public static void indexFromDBWithUrls(String date, Client client) {
+        DBManager dbManager = new DBManager();
+        Map<Long, TweetObject> tweets = dbManager.selectTweetsCreatedAt(date);
+        Map<Long, List<String>> tweetsUrlContents = dbManager.selectTweetsAndUrlContentCreatedAt(date);
+        TweetObject currentTweet;
+        for (Map.Entry<Long, List<String>> tweetsUrlContent : tweetsUrlContents.entrySet()) {
+            currentTweet = tweets.get(tweetsUrlContent.getKey());
+            if (currentTweet != null) {
+                currentTweet.addUrlContents(tweetsUrlContent.getValue());
+            }
+        }
+
+        String json;
+        IndexResponse indexResponse;
+        int counter = 0;
+        for (TweetObject tweet : tweets.values()) {
             json = tweet.toJson();
             indexResponse = client.prepareIndex("twitter", "tweet", tweet.getId().toString()).setSource(json).execute().actionGet();
             if(indexResponse.isCreated()) {

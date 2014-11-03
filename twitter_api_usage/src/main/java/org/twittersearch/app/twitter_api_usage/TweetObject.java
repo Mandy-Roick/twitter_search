@@ -1,7 +1,11 @@
 package org.twittersearch.app.twitter_api_usage;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -23,6 +27,7 @@ public class TweetObject extends Object {
         this.id = id;
         this.content = content;
         this.flag = evaluationFlag;
+        this.urlContents = new LinkedList<String>();
 
         //if (evaluationFlag.equals("politics")) this.flag = EvaluationFlag.politics;
         //else if (evaluationFlag.equals("sports")) this.flag = EvaluationFlag.sports;
@@ -45,11 +50,27 @@ public class TweetObject extends Object {
         return content;
     }
 
+    public void addUrlContent(String urlContent) {
+        this.urlContents.add(urlContent);
+    }
+
+    public void addUrlContents(List<String> urlContents) {
+        this.urlContents.addAll(urlContents);
+    }
+
     public String toJson() {
         JsonObject tweetObject = new JsonObject();
         tweetObject.addProperty("id", this.id);
-        tweetObject.addProperty("content", this.content);
+        tweetObject.addProperty("content", "\"" + this.content + "\"");
         tweetObject.addProperty("evaluation_flag", this.flag);
+
+        if (!urlContents.isEmpty()) {
+            JsonArray urlsObject = new JsonArray();
+            for (String urlContent : this.urlContents) {
+                urlsObject.add(new JsonPrimitive(urlContent));
+            }
+            tweetObject.add("url_content", urlsObject);
+        }
 
         return tweetObject.toString();
     }

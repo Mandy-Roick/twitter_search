@@ -2,6 +2,7 @@ package org.twittersearch.app.search_engine;
 
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
+import org.twittersearch.app.topic_modelling.TopicContainer;
 import org.twittersearch.app.topic_modelling.TopicModelBuilder;
 import org.twittersearch.app.twitter_api_usage.TwitterManager;
 import twitter4j.TwitterException;
@@ -56,6 +57,15 @@ public class TopicSearchEngine {
         return expandedQuery;
     }
 
+//    public static List<TopicContainer> expandQueryForGivenDateWithTopicIndices(String query, String date) {
+//
+//        //String filePrefix = TopicModelBuilder.learnTopicModel(calendarOfYesterday);
+//        String filePrefix = "trimmed_tm-200_" + date;
+//        List<TopicContainer> expandedQuery = QueryExpander.expand(query, 0.1, 3, filePrefix);
+//
+//        return expandedQuery;
+//    }
+
     public static void searchForTweets(String[][] expandedQuery) {
         TwitterManager twitterManager = new TwitterManager();
         for (String[] topicQuery : expandedQuery) {
@@ -73,15 +83,26 @@ public class TopicSearchEngine {
         }
     }
 
-    public static void searchForTweetsViaES(String[][] expandedQuery, ElasticSearchManager esManager) {
+    // TODO: write less duplicated Code (next method does nearly the same, except for esManager.searchForInSample()
+    public static List<String> searchForTweetsViaES(String[][] expandedQuery, ElasticSearchManager esManager) {
+        List<String> tweets = new ArrayList<String>();
+
+        SearchHits searchHits;
         for (String[] topicQuery : expandedQuery) {
             String twitterQuery = "";
             for (String queryElement : topicQuery) {
                 twitterQuery += queryElement + " ";
             }
             System.out.println("--------------------" + twitterQuery + "-------------------------------");
-            esManager.searchFor(twitterQuery);
+            searchHits = esManager.searchFor(twitterQuery);
+
+            for (SearchHit searchHit : searchHits) {
+                tweets.add(searchHit.getSource().toString());
+                System.out.println(searchHit.getSource());
+            }
         }
+
+        return tweets;
     }
 
     public static List<String> searchForTweetsViaESInSample(String[][] expandedQuery, ElasticSearchManager esManager, List<String> sampledTweets) {
@@ -98,7 +119,22 @@ public class TopicSearchEngine {
 
             for (SearchHit searchHit : searchHits) {
                 tweets.add(searchHit.getSource().toString());
+                System.out.println(searchHit.getSource());
             }
+        }
+
+        return tweets;
+    }
+
+    public static List<String> searchForTweetsViaESInSample(String query, ElasticSearchManager esManager, List<String> sampledTweets) {
+        List<String> tweets = new ArrayList<String>();
+
+        SearchHits searchHits;
+        searchHits = esManager.searchForInSample(query, sampledTweets);
+
+        for (SearchHit searchHit : searchHits) {
+            tweets.add(searchHit.getSource().toString());
+            System.out.println(searchHit.getSource());
         }
 
         return tweets;

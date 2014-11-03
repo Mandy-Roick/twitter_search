@@ -45,8 +45,8 @@ public class TopicModelBuilder {
             ParallelTopicModelExtension model;
 
             c.add(Calendar.DATE, -1);
-            String yesterdayTypesFileName = "trimmed_tm-" + numTopics + "_" + sdf.format(c.getTime())+ "_type_topic_counts.results";
-            String yesterdayTopicsFileName = "trimmed_tm-" + numTopics + "_" + sdf.format(c.getTime())+ "_top_words.results";
+            String yesterdayTypesFileName = "trimmed_tm-" + numTopics + "_" + sdf.format(c.getTime())+ FileReaderHelper.FS_TYPE_TOPIC_COUNTS;
+            String yesterdayTopicsFileName = "trimmed_tm-" + numTopics + "_" + sdf.format(c.getTime())+ FileReaderHelper.FS_TOP_WORDS;
             File yesterdayTopicsFile = new File(yesterdayTopicsFileName);
             if (yesterdayTopicsFile.exists()) {
                 BetaAndTypesContainer betaAndTypes = FileReaderHelper.readTypesAndBeta(yesterdayTypesFileName);
@@ -213,9 +213,13 @@ public class TopicModelBuilder {
         return instances;
     }
 
-    //private static InstanceList createInstanceList(Iterator<Instance> inputIterator1, Iterator<Instance> inputIterator2, String filePrefix) throws IOException {
-    //    return createInstanceList(inputIterator1, inputIterator2, filePrefix, true);
-    //}
+    public static InstanceList createInstanceList(Iterator<Instance> inputIterator1, Iterator<Instance> inputIterator2, String filePrefix) throws IOException {
+        List<Iterator<Instance>> inputIterators1 = new LinkedList<Iterator<Instance>>();
+        inputIterators1.add(inputIterator1);
+        List<Iterator<Instance>> inputIterators2 = new LinkedList<Iterator<Instance>>();
+        inputIterators2.add(inputIterator2);
+        return createInstanceList(inputIterators1, inputIterators2, filePrefix, true);
+    }
 
     private static InstanceList createInstanceList(List<Iterator<Instance>> inputIterators1, List<Iterator<Instance>> inputIterators2, String filePrefix) throws IOException {
         return createInstanceList(inputIterators1, inputIterators2, filePrefix, true);
@@ -284,7 +288,6 @@ public class TopicModelBuilder {
         if(writeFrequencies) writeWordFrequenciesToCsv(filePrefix, wordFrequenciesList);
         return prunedInstances;
     }
-
 
     private static void removeSmallDocuments(InstanceList prunedInstances, int minSize) {
         List<Integer> indicesOfSmallDocuments = new LinkedList<Integer>();
@@ -370,7 +373,7 @@ public class TopicModelBuilder {
     }
 
     private static void writeTopicInferencer(String filePrefix, TopicInferencer topicInferencer) {
-        File file = new File(filePrefix + "_topic_inferencer.results");
+        File file = new File(filePrefix + FileReaderHelper.FS_TOPIC_INFERENCER);
         try {
             FileOutputStream fos = new FileOutputStream(file);
             ObjectOutputStream oos = new ObjectOutputStream(fos);
@@ -384,7 +387,7 @@ public class TopicModelBuilder {
     }
 
     private static void writeStemmingDictionaryFile(String filePrefix, Map<String, String> stemmingDictionary) {
-        File file = new File(filePrefix + "_stemming_dictionary.results");
+        File file = new File(filePrefix + FileReaderHelper.FS_STEMMING_DICT);
         try {
             FileOutputStream fos = new FileOutputStream(file);
             ObjectOutputStream oos = new ObjectOutputStream(fos);
