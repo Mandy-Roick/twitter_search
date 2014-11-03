@@ -15,13 +15,16 @@ import static java.lang.Math.pow;
 public class TopicMatcher {
 
     public static void main(String[] args) {
-        String date1 = "2014-10-08";
-        String date2 = "2014-10-09";
-        Map<Integer, String[]> topWords1 = FileReaderHelper.readTopWords("three-day-tm-200_" + date1 + "_top_words.results");
-        Map<Integer, String[]> topWords2 = FileReaderHelper.readTopWords("three-day-tm-200_" + date2 + "_top_words.results");
+        String date1 = "2014-10-20";
+        String date2 = "2014-10-21";
+        //Map<Integer, String[]> topWords1 = FileReaderHelper.readTopWords("three-day-tm-200_" + date1 + "_top_words.results");
+        //Map<Integer, String[]> topWords2 = FileReaderHelper.readTopWords("three-day-tm-200_" + date2 + "_top_words.results");
+        Map<Integer, String[]> topWords1 = FileReaderHelper.readTopWords("trimmed_tm-200_" + date1);
+        Map<Integer, String[]> topWords2 = FileReaderHelper.readTopWords("trimmed_tm-200_" + date2);
         Map<Integer, Integer> matching = matchTopics(topWords1, topWords2);
 
-        writeMatchingResultToCsv(date1 + "_and_" + date2 + "_three_days.csv",matching);
+        //writeMatchingResultToCsv(date1 + "_and_" + date2 + "_three_days.csv",matching);
+        writeMatchingResultToCsv(date1 + "_and_" + date2 + ".csv",matching);
         for (Map.Entry<Integer, Integer> entry : matching.entrySet()) {
             System.out.println(entry.getKey() + ", " + entry.getValue());
         }

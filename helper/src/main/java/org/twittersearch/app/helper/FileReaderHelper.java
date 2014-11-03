@@ -1,10 +1,9 @@
 package org.twittersearch.app.helper;
 
 import au.com.bytecode.opencsv.CSVReader;
+import cc.mallet.topics.TopicInferencer;
 
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
 
 /**
@@ -12,6 +11,11 @@ import java.util.*;
  */
 public class FileReaderHelper {
 
+    // FS = file suffix
+    public static final String FS_TOP_WORDS = "_top_words.results";
+    public static final String FS_TYPE_TOPIC_COUNTS = "_type_topic_counts.results";
+    public static final String FS_STEMMING_DICT = "_stemming_dictionary.results";
+    public static final String FS_TOPIC_INFERENCER = "_topic_inferencer.results";
 
     public static Map<String, String[]> readTopicModelForExpansion(String fileName) {
         Map<String,String[]> typeTopicCounts = new HashMap<String, String[]>();
@@ -34,10 +38,10 @@ public class FileReaderHelper {
         return typeTopicCounts;
     }
 
-    public static Map<String, TypeContainer> readTypes(String fileName) {
+    public static Map<String, TypeContainer> readTypes(String filePrefix) {
         Map<String, TypeContainer> types = new HashMap<String, TypeContainer>();
         try {
-            CSVReader csvReader = new CSVReader(new FileReader(fileName), ' ');
+            CSVReader csvReader = new CSVReader(new FileReader(filePrefix + FS_TYPE_TOPIC_COUNTS), ' ');
             String[] nextLine;
             TypeContainer type;
 
@@ -138,11 +142,11 @@ public class FileReaderHelper {
         return typesTopics;
     }
 
-    public static Map<Integer, String[]> readTopWords(String fileName) {
+    public static Map<Integer, String[]> readTopWords(String filePrefix) {
         Map<Integer, String[]> topWords = new HashMap<Integer, String[]>();
 
         try {
-            CSVReader csvReader = new CSVReader(new FileReader(fileName), ',', ' ');
+            CSVReader csvReader = new CSVReader(new FileReader(filePrefix + FS_TOP_WORDS), ',', ' ');
             String[] nextLine;
             while ((nextLine = csvReader.readNext()) != null) {
                 String[] topWordsForTopic = Arrays.copyOfRange(nextLine, 3, nextLine.length);
@@ -178,5 +182,39 @@ public class FileReaderHelper {
             e.printStackTrace();
         }
         return topicCounts;
+    }
+
+    public static TopicInferencer readTopicInferencer(String filePrefix) {
+        TopicInferencer result = null;
+
+        File file = new File(filePrefix + FS_TOPIC_INFERENCER);
+        try {
+            FileInputStream fis = new FileInputStream(file);
+            ObjectInputStream ois = new ObjectInputStream(fis);
+            result = (TopicInferencer) ois.readObject();
+            ois.close();
+        } catch (IOException e) {
+            System.out.println("Could not read topic inferencer from file " + file.getName());
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+
+    public static Map<String, String> readStemmingDictionary(String filePrefix) {
+        Map<String, String> stemmingDictionary = null;
+        try {
+            FileInputStream fis = new FileInputStream(filePrefix + "_stemming_dictionary.results");
+            ObjectInputStream ois = new ObjectInputStream(fis);
+            stemmingDictionary = (Map<String, String>) ois.readObject();
+        } catch (java.io.IOException e) {
+            System.out.println("Could not read stemming dictionary from file.");
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            System.out.println("Could not read stemming dictionary because of class incompatibilities.");
+            e.printStackTrace();
+        }
+        return stemmingDictionary;
     }
 }

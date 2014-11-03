@@ -45,33 +45,21 @@ public class QueryExpander {
         String[] splitQuery = splitQuery(preprocessedQuery);
         String[] postprocessedQuery = postprocessQuery(splitQuery);
 
-        Map<String, TypeContainer> types = FileReaderHelper.readTypes(filePrefix + "_type_topic_counts.results");
-        Map<Integer, String[]> topWords = FileReaderHelper.readTopWords(filePrefix + "_top_words.results");
+        Map<String, TypeContainer> types = FileReaderHelper.readTypes(filePrefix);
+        Map<Integer, String[]> topWords = FileReaderHelper.readTopWords(filePrefix);
 
         String[][] expandedQuery = expandThroughTopicModel(postprocessedQuery, types, topWords, topicPercentageThreshold, numOfTopWordsPerTopic);
+        Map<String, String> stemmingDictionary = FileReaderHelper.readStemmingDictionary(filePrefix);
 
-        try {
-            FileInputStream fis = new FileInputStream(filePrefix + "_stemming_dictionary.results");
-            ObjectInputStream ois = new ObjectInputStream(fis);
-            Map<String, String> stemmingDictionary = (Map<String, String>) ois.readObject();
-
-            String originalWord;
-            for (int i = 0; i < expandedQuery.length; i++) {
-                for (int j = 0; j < expandedQuery[i].length; j++) {
-                    originalWord = stemmingDictionary.get(expandedQuery[i][j]);
-                    if (originalWord != null) {
-                        expandedQuery[i][j] = originalWord;
-                    }
+        String originalWord;
+        for (int i = 0; i < expandedQuery.length; i++) {
+            for (int j = 0; j < expandedQuery[i].length; j++) {
+                originalWord = stemmingDictionary.get(expandedQuery[i][j]);
+                if (originalWord != null) {
+                    expandedQuery[i][j] = originalWord;
                 }
             }
-        } catch (java.io.IOException e) {
-            System.out.println("Could not read stemming dictionary from file.");
-            e.printStackTrace();
-        } catch (ClassNotFoundException e) {
-            System.out.println("Could not read stemming dictionary because of class incompatibilities.");
-            e.printStackTrace();
         }
-
 
         return expandedQuery;
     }
