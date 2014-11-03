@@ -61,17 +61,28 @@ public class UrlCollector {
         Map<Long, Map<String, Future<String>>> urlFutureTextsForTweets = startUrlThreads(tweetsUrls, executorService);
         collectUrlThreads(urlFutureTextsForTweets, dbManager);
 
-        executorService.shutdown();
-        try {
-            executorService.awaitTermination(30, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            System.out.println("Interrupted Exception during final termination of threads:");
-            System.out.println(e.toString());
-            //e.printStackTrace();
+        while (!urlFutureTextsForTweets.isEmpty()) {
+            try {
+                System.out.println("-------------------- Wait for a minute. ---------------------");
+                TimeUnit.MINUTES.sleep(10);
+            } catch(InterruptedException ex) {
+                Thread.currentThread().interrupt();
+            }
+            collectUrlThreads(urlFutureTextsForTweets, dbManager);
         }
 
-        System.out.println("Second run of collecting URLs.");
-        collectUrlThreads(urlFutureTextsForTweets, dbManager);
+
+//        executorService.shutdown();
+//        try {
+//            executorService.awaitTermination(30, TimeUnit.SECONDS);
+//        } catch (InterruptedException e) {
+//            System.out.println("Interrupted Exception during final termination of threads:");
+//            System.out.println(e.toString());
+//            //e.printStackTrace();
+//        }
+//
+//        System.out.println("Second run of collecting URLs.");
+//        collectUrlThreads(urlFutureTextsForTweets, dbManager);
     }
 
     private static Map<Long, Map<String, Future<String>>> startUrlThreads(Map<Long, List<String>> tweetsUrls, ExecutorService executorService) {
