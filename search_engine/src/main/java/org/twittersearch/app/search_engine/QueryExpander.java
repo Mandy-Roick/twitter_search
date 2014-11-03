@@ -20,8 +20,8 @@ public class QueryExpander {
     public static void main(String[] args) {
         double topicPercentageThreshold = 0.05; //10%
         int numOfTopWordsPerTopic = 3;
-        String date = "2014-10-23";
-        String filePrefix = "trimmed_tm-200_" + date;
+        String date = "2014-10-21";
+        String filePrefix = "trimmed_tm-200_" + date + "_wo_seeding";
         String[][] expandedQuery;
         if (args.length == 1 ) {
             expandedQuery = expand(args[1], topicPercentageThreshold, numOfTopWordsPerTopic, filePrefix);

@@ -3,6 +3,7 @@ package org.twittersearch.app.topic_modelling;
 import au.com.bytecode.opencsv.CSVWriter;
 import cc.mallet.pipe.*;
 import cc.mallet.pipe.iterator.CsvIterator;
+import cc.mallet.topics.TopicInferencer;
 import cc.mallet.types.*;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.twittersearch.app.helper.BetaAndTypesContainer;
@@ -23,7 +24,7 @@ public class TopicModelBuilder {
 
     public static void main(String[] args) {
         Calendar c = Calendar.getInstance();
-        c.set(2014, 9, 21); //Months start with 0 :(
+        c.set(2014, 9, 20); //Months start with 0 :(
         //c.add(Calendar.DATE, 1); //08 is for him a too large integer number
         learnTopicModel(c);
     }
@@ -34,6 +35,7 @@ public class TopicModelBuilder {
 
         int numTopics = 200;
         double topicsCutOffPercentage = 0.5/200.0;
+        //String filePrefix = "trimmed_tm-" + numTopics + "_" + date + "_wo_seeding";
         String filePrefix = "trimmed_tm-" + numTopics + "_" + date;
 
         try {
@@ -50,6 +52,7 @@ public class TopicModelBuilder {
                 BetaAndTypesContainer betaAndTypes = FileReaderHelper.readTypesAndBeta(yesterdayTypesFileName);
                 Map<Integer, Integer> topicCounts = FileReaderHelper.readTopicCounts(yesterdayTopicsFileName);
                 List<Integer> ignoreTopics = calculateIgnoreTopics(topicsCutOffPercentage, topicCounts);
+                System.out.println("Number of deleted topics: " + ignoreTopics.size());
                 Map<String, double[]> typeTopicProbabilites = calculateTypesSmoothedTopicCounts(betaAndTypes, ignoreTopics, numTopics);
                 model = new ParallelTopicModelExtension(typeTopicProbabilites, numTopics, 0.01*numTopics, 0.05);
             } else {
@@ -68,8 +71,7 @@ public class TopicModelBuilder {
             //model.printDocumentTopics(new File(filePrefix + "_document_topics.results"));
             TopicContainer[] topics = extractTopicScores(numTopics, model);
             writeTopWordsToCsv(filePrefix, model, topics);
-
-
+            writeTopicInferencer(filePrefix, model.getInferencer());
 
             //model.getInferencer().writeInferredDistributions(instances, new File(filePrefix + "_distributions.results"),
             //                                                 500, 50, 50, 0.01, 50);
@@ -162,6 +164,7 @@ public class TopicModelBuilder {
             TopicContainer[] topics = extractTopicScores(numTopics, model);
 
             writeTopWordsToCsv(filePrefix, model, topics);
+            writeTopicInferencer(filePrefix, model.getInferencer());
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -282,6 +285,19 @@ public class TopicModelBuilder {
         return prunedInstances;
     }
 
+
+    private static void removeSmallDocuments(InstanceList prunedInstances, int minSize) {
+        List<Integer> indicesOfSmallDocuments = new LinkedList<Integer>();
+        for (int i = 0; i < prunedInstances.size(); i++) {
+            if (((FeatureSequence) prunedInstances.get(i).getData()).size() < minSize) {
+                indicesOfSmallDocuments.add(i);
+            }
+        }
+        for (Integer index : indicesOfSmallDocuments) {
+            prunedInstances.remove(index);
+        }
+    }
+
     //--------------------------------- retrieve data from topic model and write to files ------------------------------
 
     private static TopicContainer[] extractTopicScores(int numTopics, ParallelTopicModelExtension model) {
@@ -353,16 +369,18 @@ public class TopicModelBuilder {
         topWordsCsvWriter.close();
     }
 
-    private static void removeSmallDocuments(InstanceList prunedInstances, int minSize) {
-        List<Integer> indicesOfSmallDocuments = new LinkedList<Integer>();
-        for (int i = 0; i < prunedInstances.size(); i++) {
-            if (((FeatureSequence) prunedInstances.get(i).getData()).size() < minSize) {
-                indicesOfSmallDocuments.add(i);
-            }
+    private static void writeTopicInferencer(String filePrefix, TopicInferencer topicInferencer) {
+        File file = new File(filePrefix + "_topic_inferencer.results");
+        try {
+            FileOutputStream fos = new FileOutputStream(file);
+            ObjectOutputStream oos = new ObjectOutputStream(fos);
+            oos.writeObject(topicInferencer);
+            oos.close();
+        } catch (IOException e) {
+            System.out.println("Could not write topic inferencer to file.");
+            e.printStackTrace();
         }
-        for (Integer index : indicesOfSmallDocuments) {
-            prunedInstances.remove(index);
-        }
+
     }
 
     private static void writeStemmingDictionaryFile(String filePrefix, Map<String, String> stemmingDictionary) {
