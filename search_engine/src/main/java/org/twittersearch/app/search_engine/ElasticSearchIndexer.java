@@ -9,6 +9,7 @@ import org.twittersearch.app.twitter_api_usage.TweetObject;
 import java.io.FileReader;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Created by Mandy Roick on 06.10.2014.
@@ -67,27 +68,32 @@ public class ElasticSearchIndexer {
     public static void indexFromDBWithUrls(String date, Client client) {
         DBManager dbManager = new DBManager();
         Map<Long, TweetObject> tweets = dbManager.selectTweetsCreatedAt(date);
-        Map<Long, List<String>> tweetsUrlContents = dbManager.selectTweetsAndUrlContentCreatedAt(date);
-        TweetObject currentTweet;
-        for (Map.Entry<Long, List<String>> tweetsUrlContent : tweetsUrlContents.entrySet()) {
-            currentTweet = tweets.get(tweetsUrlContent.getKey());
-            if (currentTweet != null) {
-                currentTweet.addUrlContents(tweetsUrlContent.getValue());
-            }
-        }
+        Set<Long> tweetsWithUrlContents = dbManager.selectTweetsWithUrlContentCreatedAt(date);
+
+//        for (TweetObject tweet : tweets.values()) {
+//            List<String> urlContents = dbManager.selectUrlContentsForTweet(tweet.getId());
+//            tweet.addUrlContents(urlContents);
+//        }
 
         String json;
         IndexResponse indexResponse;
         int counter = 0;
+        long tweetId;
         for (TweetObject tweet : tweets.values()) {
+            tweetId = tweet.getId();
+            if (tweetsWithUrlContents.contains(tweetId)) {
+                List<String> urlContents = dbManager.selectUrlContentsForTweet(tweetId);
+                tweet.addUrlContents(urlContents);
+            }
+
             json = tweet.toJson();
-            indexResponse = client.prepareIndex("twitter", "tweet", tweet.getId().toString()).setSource(json).execute().actionGet();
-            if(indexResponse.isCreated()) {
-                if((counter % 10000) == 0) {
+            indexResponse = client.prepareIndex("twitter", "tweet", Long.toString(tweetId)).setSource(json).execute().actionGet();
+            //if(indexResponse.isCreated()) {
+                if((counter % 1000) == 0) {
                     System.out.println(counter + ": " + indexResponse.getId());
                 }
                 counter++;
-            }
+            //}
         }
 
     }

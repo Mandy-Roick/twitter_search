@@ -460,32 +460,43 @@ public class DBManager {
         return tweetsHashtags;
     }
 
-    public Map<Long, List<String>> selectTweetsAndUrlContentCreatedAt(String date) {
-        Map<Long, List<String>> tweetsUrlContents = new HashMap<Long, List<String>>();
+    public Set<Long> selectTweetsWithUrlContentCreatedAt(String date) {
+        Set<Long> tweetsWithUrlContents = new HashSet<Long>();
 
         try {
             Statement statement = connection.createStatement();
-            ResultSet result = statement.executeQuery("SELECT tweet, content FROM " +
+            ResultSet result = statement.executeQuery("SELECT tweet FROM " +
                     "((SELECT id FROM mandy_masterarbeit.twitter_tweet WHERE created_at = '" + date + "') tweet " +
                     "INNER JOIN mandy_masterarbeit.twitter_tweet_url url ON tweet.id = url.tweet)" +
                     "WHERE (has_text = 't')");
 
             while(result.next()) {
-                Long tweetId = result.getLong(1);
-                List<String> urlContents = tweetsUrlContents.get(tweetId);
-                if (urlContents == null) {
-                    urlContents = new LinkedList<String>();
-                }
-                String urlContent = result.getString(2);
-                urlContents.add(urlContent);
-                tweetsUrlContents.put(tweetId, urlContents);
+                tweetsWithUrlContents.add(result.getLong(1));
             }
         } catch (SQLException e) {
             System.out.println("Could not select url contents and tweets from DB for date " + date + "!");
             e.printStackTrace();
         }
 
-        return tweetsUrlContents;
+        return tweetsWithUrlContents;
+    }
+
+    public List<String> selectUrlContentsForTweet(Long tweetId) {
+        List<String> urlContents = new LinkedList<String>();
+        try {
+            Statement statement = connection.createStatement();
+            ResultSet result = statement.executeQuery("SELECT content FROM mandy_masterarbeit.twitter_tweet_url " +
+                    "WHERE (tweet = " + tweetId + ") AND (has_text = 't')");
+
+            while (result.next()) {
+                urlContents.add(result.getString(1));
+            }
+        } catch (SQLException e) {
+            System.out.println("Could not select url contents for tweet id " + tweetId + "!");
+            e.printStackTrace();
+        }
+
+        return urlContents;
     }
 
     public Map<Long, List<String>> selectTweetsUrlsWithoutText() {
@@ -544,6 +555,29 @@ public class DBManager {
         }
 
         return tweetsUrls;
+    }
+
+    public List<CrawlUrl> selectUrlsWithoutTextForDate(String date) {
+        List<CrawlUrl> urls = new ArrayList<CrawlUrl>();
+
+        try {
+            Statement statement = connection.createStatement();
+            ResultSet result = statement.executeQuery("SELECT url, tweet FROM " +
+                    "((SELECT id FROM mandy_masterarbeit.twitter_tweet WHERE created_at = '" + date + "') tweet " +
+                    "INNER JOIN mandy_masterarbeit.twitter_tweet_url url ON tweet.id = url.tweet)" +
+                    "WHERE (has_text = 'f')");
+
+            while(result.next()) {
+                urls.add(new CrawlUrl(result.getString(1), result.getLong(2)));
+            }
+
+            statement.close();
+        } catch (SQLException e) {
+            System.out.println("Could not select urls without text!");
+            e.printStackTrace();
+        }
+
+        return urls;
     }
 
     public Long selectHighestIdFromDate(String date) {
