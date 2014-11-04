@@ -25,9 +25,10 @@ public class Evaluator
         String query = "baseball";
         int numberOfSampledTweets = 100000;
 
-        //esManager.addToIndex("2014-10-10");
-        Evaluator evaluator = new Evaluator();
-        evaluator.evaluateTopicBasedSearch(query, numberOfSampledTweets);
+        ElasticSearchManager esManager = new ElasticSearchManager();
+        esManager.addToIndex("2014-10-21");
+        //Evaluator evaluator = new Evaluator();
+        //evaluator.evaluateTopicBasedSearch(query, numberOfSampledTweets);
     }
 
     private static int calculateNumberOfExpertTweets(String query, List<String> relevantTweets) {
@@ -80,7 +81,7 @@ public class Evaluator
         //esManager.addToIndex(date);
         List<TopicContainer> expandedQuery = TopicSearchEngine.expandQueryForGivenDateWithTopicIndices(query, "2014-10-20");
         // TODO: restrict the elastic search to one day
-        Map<TopicContainer, List<String>> relevantTweets = TopicSearchEngine.searchForTweetsViaES(expandedQuery, this.esManager, 3);
+        Map<TopicContainer, List<String>> relevantTweets = TopicSearchEngine.searchForTweetsViaES(expandedQuery, date, this.esManager, 3);
 
         // 2. calculateTopicInferencing for relevant tweets
         String filePrefix = "trimmed_tm-" + 200 + "_" + date;

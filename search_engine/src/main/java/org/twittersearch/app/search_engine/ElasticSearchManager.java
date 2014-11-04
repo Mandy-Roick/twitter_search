@@ -58,7 +58,11 @@ public class ElasticSearchManager {
 
     public SearchHits searchFor(String query, String date) {
         // TODO: use the date and search only in tweets from that date => need to google how elastic search handles dates
-        SearchResponse response = this.client.prepareSearch().setQuery(QueryBuilders.matchQuery("content", query))
+        FilterBuilder filterBuilder = FilterBuilders.termFilter("created_at", date);
+        QueryBuilder queryBuilder = QueryBuilders.multiMatchQuery(query, "content", "url_content");
+        FilteredQueryBuilder filteredQueryBuilder = QueryBuilders.filteredQuery(queryBuilder, filterBuilder);
+
+        SearchResponse response = this.client.prepareSearch().setQuery(filteredQueryBuilder)
                 .setFrom(0)
                 .setSize(60).execute().actionGet();
         return response.getHits();
@@ -69,7 +73,7 @@ public class ElasticSearchManager {
         QueryBuilder queryBuilder = QueryBuilders.multiMatchQuery(query, "content", "url_content"); // first query, than fields I query on
         FilteredQueryBuilder filteredQueryBuilder = QueryBuilders.filteredQuery(queryBuilder, filterBuilder);
 
-        SearchResponse response = this.client.prepareSearch().setPostFilter(filterBuilder).setQuery(filteredQueryBuilder)
+        SearchResponse response = this.client.prepareSearch().setQuery(filteredQueryBuilder)
                 .setFrom(0)
                 .setSize(60).execute().actionGet();
 
