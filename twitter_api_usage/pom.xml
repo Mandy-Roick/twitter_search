@@ -23,7 +23,7 @@
                   <archive>
                       <manifest>
                           <addClasspath>true</addClasspath>
-                          <mainClass>org.twittersearch.app.twitter_api_usage.UrlCollector</mainClass>
+                          <mainClass>org.twittersearch.app.twitter_api_usage.UrlCollectorMax</mainClass>
                       </manifest>
                   </archive>
               </configuration>

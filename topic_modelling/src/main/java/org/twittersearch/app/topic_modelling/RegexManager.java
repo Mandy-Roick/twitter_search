@@ -1,5 +1,7 @@
 package org.twittersearch.app.topic_modelling;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -8,6 +10,16 @@ import java.util.regex.Pattern;
  */
 public class RegexManager {
     public static void main(String[] args) {
+
+        String url = "http://t.co/1hYdDxCoSR";
+        try {
+            URI uri = new URI(url);
+            String domain = uri.getHost();
+            System.out.println(domain);
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        }
+
         Pattern pattern = Pattern.compile("[\\p{L}][\\p{L}\\p{Pd}\\p{M}]+\\p{L}");
         System.out.println(pattern.matches("[\\p{L}][\\p{L}\\p{Pd}\\p{M}]+\\p{L}", "don`t"));
 
