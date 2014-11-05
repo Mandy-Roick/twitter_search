@@ -69,19 +69,17 @@ public class ElasticSearchIndexer {
         DBManager dbManager = new DBManager();
         Map<Long, TweetObject> tweets = dbManager.selectTweetsCreatedAt(date);
         Set<Long> tweetsWithUrlContents = dbManager.selectTweetsWithUrlContentCreatedAt(date);
-
-//        for (TweetObject tweet : tweets.values()) {
-//            List<String> urlContents = dbManager.selectUrlContentsForTweet(tweet.getId());
-//            tweet.addUrlContents(urlContents);
-//        }
+        System.out.println(tweetsWithUrlContents.size() + " tweets with urls.");
 
         String json;
         IndexResponse indexResponse;
         int counter = 0;
-        long tweetId;
-        for (TweetObject tweet : tweets.values()) {
-            tweetId = tweet.getId();
-            if (tweetsWithUrlContents.contains(tweetId)) {
+        TweetObject tweet;
+        for (Long tweetId : tweetsWithUrlContents) {
+            tweet = tweets.get(tweetId);
+            tweets.remove(tweetId);
+
+            if (tweet != null) {
                 List<String> urlContents = dbManager.selectUrlContentsForTweet(tweetId);
                 tweet.addUrlContents(urlContents);
             }
@@ -89,7 +87,7 @@ public class ElasticSearchIndexer {
             json = tweet.toJson();
             indexResponse = client.prepareIndex("twitter", "tweet", Long.toString(tweetId)).setSource(json).execute().actionGet();
             //if(indexResponse.isCreated()) {
-                if((counter % 1000) == 0) {
+                if((counter % 100) == 0) {
                     System.out.println(counter + ": " + indexResponse.getId());
                 }
                 counter++;
