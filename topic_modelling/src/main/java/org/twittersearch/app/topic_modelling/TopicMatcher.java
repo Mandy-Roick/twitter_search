@@ -2,6 +2,7 @@ package org.twittersearch.app.topic_modelling;
 
 import au.com.bytecode.opencsv.CSVWriter;
 import org.twittersearch.app.helper.FileReaderHelper;
+import org.twittersearch.app.helper.TopicContainer;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -19,9 +20,9 @@ public class TopicMatcher {
         String date2 = "2014-10-21";
         //Map<Integer, String[]> topWords1 = FileReaderHelper.readTopWords("three-day-tm-200_" + date1 + "_top_words.results");
         //Map<Integer, String[]> topWords2 = FileReaderHelper.readTopWords("three-day-tm-200_" + date2 + "_top_words.results");
-        Map<Integer, String[]> topWords1 = FileReaderHelper.readTopWords("trimmed_tm-200_" + date1);
-        Map<Integer, String[]> topWords2 = FileReaderHelper.readTopWords("trimmed_tm-200_" + date2);
-        Map<Integer, Integer> matching = matchTopics(topWords1, topWords2);
+        Map<Integer, TopicContainer> topics1 = FileReaderHelper.readTopWords("trimmed_tm-200_" + date1);
+        Map<Integer, TopicContainer> topics2 = FileReaderHelper.readTopWords("trimmed_tm-200_" + date2);
+        Map<Integer, Integer> matching = matchTopics(topics1, topics2);
 
         //writeMatchingResultToCsv(date1 + "_and_" + date2 + "_three_days.csv",matching);
         writeMatchingResultToCsv(date1 + "_and_" + date2 + ".csv",matching);
@@ -46,15 +47,15 @@ public class TopicMatcher {
 
     }
 
-    public static Map<Integer, Integer> matchTopics(Map<Integer, String[]> topics1, Map<Integer, String[]> topics2) {
+    public static Map<Integer, Integer> matchTopics(Map<Integer, TopicContainer> topics1, Map<Integer, TopicContainer> topics2) {
         Map<Integer,Integer> mapping = new HashMap<Integer, Integer>();
-        for (Map.Entry<Integer, String[]> topic1 : topics1.entrySet()) {
+        for (Map.Entry<Integer, TopicContainer> topic1 : topics1.entrySet()) {
             int bestMatch = -1;
             double bestMatchEvaluation = 0;
             double currentMatchEvaluation;
-            for (Map.Entry<Integer, String[]> topic2 : topics2.entrySet()) {
+            for (Map.Entry<Integer, TopicContainer> topic2 : topics2.entrySet()) {
                 //currentMatchEvaluation = compareTopics(topic1, topic2);
-                currentMatchEvaluation = rankBiasedOverlap(topic1.getValue(), topic2.getValue(), 0.98);
+                currentMatchEvaluation = rankBiasedOverlap(topic1.getValue().getTopWords(), topic2.getValue().getTopWords(), 0.98);
                 if ((bestMatch == -1) || (currentMatchEvaluation > bestMatchEvaluation)) {
                     bestMatch = topic2.getKey();
                     bestMatchEvaluation = currentMatchEvaluation;
