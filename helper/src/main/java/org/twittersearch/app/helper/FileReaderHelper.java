@@ -142,15 +142,16 @@ public class FileReaderHelper {
         return typesTopics;
     }
 
-    public static Map<Integer, String[]> readTopWords(String filePrefix) {
-        Map<Integer, String[]> topWords = new HashMap<Integer, String[]>();
+    public static Map<Integer, TopicContainer> readTopWords(String filePrefix) {
+        Map<Integer, TopicContainer> topWords = new HashMap<Integer, TopicContainer>();
 
         try {
             CSVReader csvReader = new CSVReader(new FileReader(filePrefix + FS_TOP_WORDS), ',', ' ');
             String[] nextLine;
             while ((nextLine = csvReader.readNext()) != null) {
+                int topicId = Integer.parseInt(nextLine[0]);
                 String[] topWordsForTopic = Arrays.copyOfRange(nextLine, 3, nextLine.length);
-                topWords.put(Integer.parseInt(nextLine[0]), topWordsForTopic);
+                topWords.put(topicId, new TopicContainer(topicId, topWordsForTopic));
             }
 
         } catch (FileNotFoundException e) {

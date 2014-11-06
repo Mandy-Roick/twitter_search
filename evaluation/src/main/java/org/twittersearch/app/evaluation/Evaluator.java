@@ -4,10 +4,11 @@ import cc.mallet.pipe.iterator.ArrayIterator;
 import cc.mallet.topics.TopicInferencer;
 import cc.mallet.types.Instance;
 import cc.mallet.types.InstanceList;
+import org.apache.commons.lang.ArrayUtils;
 import org.twittersearch.app.helper.FileReaderHelper;
 import org.twittersearch.app.search_engine.ElasticSearchManager;
 import org.twittersearch.app.search_engine.TopicSearchEngine;
-import org.twittersearch.app.topic_modelling.TopicContainer;
+import org.twittersearch.app.helper.TopicContainer;
 import org.twittersearch.app.topic_modelling.TopicModelBuilder;
 import org.twittersearch.app.twitter_api_usage.DBManager;
 import org.twittersearch.app.twitter_api_usage.TweetObject;
@@ -25,10 +26,11 @@ public class Evaluator
         String query = "baseball";
         int numberOfSampledTweets = 100000;
 
-        ElasticSearchManager esManager = new ElasticSearchManager();
-        esManager.addToIndex("2014-10-21");
-        //Evaluator evaluator = new Evaluator();
+        //ElasticSearchManager esManager = new ElasticSearchManager();
+        //esManager.addToIndex("2014-10-21");
+        Evaluator evaluator = new Evaluator();
         //evaluator.evaluateTopicBasedSearch(query, numberOfSampledTweets);
+        evaluator.evaulateTopicModel(query);
     }
 
     private static int calculateNumberOfExpertTweets(String query, List<String> relevantTweets) {
@@ -78,15 +80,24 @@ public class Evaluator
 
         // 1. Find relevant tweets and topic index for those
         String date = "2014-10-21";
+        String dayBefore = "2014-10-20";
+        String filePrefix = "trimmed_tm-" + 200 + "_" + dayBefore;
         //esManager.addToIndex(date);
-        List<TopicContainer> expandedQuery = TopicSearchEngine.expandQueryForGivenDateWithTopicIndices(query, "2014-10-20");
-        // TODO: restrict the elastic search to one day
+
+        Map<Integer, TopicContainer> topics = FileReaderHelper.readTopWords(filePrefix);
+        List<TopicContainer> expandedQuery = TopicSearchEngine.expandQueryForGivenDateWithTopicIndices(query, dayBefore);
+        // TODO: return only the content of tweets
         Map<TopicContainer, List<String>> relevantTweets = TopicSearchEngine.searchForTweetsViaES(expandedQuery, date, this.esManager, 3);
 
         // 2. calculateTopicInferencing for relevant tweets
-        String filePrefix = "trimmed_tm-" + 200 + "_" + date;
         for (Map.Entry<TopicContainer, List<String>> topicTweets : relevantTweets.entrySet()) {
             double[][] sampledDistributions = calculateTopicInferencing(filePrefix, topicTweets.getValue());
+            int topicId = topicTweets.getKey().getId();
+            System.out.println(topicTweets.getKey());
+            for (double[] sampledDistribution : sampledDistributions) {
+                System.out.print(sampledDistribution[topicId]);
+                System.out.print(" max: " + Collections.max(Arrays.asList(ArrayUtils.toObject(sampledDistribution))) + "\n");
+            }
             // sampledDistribution auswerten --> trifft es das Topic aus TopicContainer
         }
 
@@ -109,7 +120,6 @@ public class Evaluator
 
             for (Instance tweetInstance : tweetInstances) {
                 double[] sampledDistribution = topicInferencer.getSampledDistribution(tweetInstance, numberOfIteration, thinning, burnin);
-                System.out.println(sampledDistribution);
                 topicDistributions.add(sampledDistribution);
             }
 

@@ -1,4 +1,4 @@
-package org.twittersearch.app.topic_modelling;
+package org.twittersearch.app.helper;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -28,6 +28,10 @@ public class TopicContainer implements Comparable {
         this.score = score;
         this.numberOfWords = numberOfWords;
         this.topWords = topWords;
+    }
+
+    public int getId() {
+        return id;
     }
 
     public Integer getScore() {
@@ -76,6 +80,20 @@ public class TopicContainer implements Comparable {
                 this.topWords[i] = originalWord;
             }
         }
+    }
+
+    @Override
+    public String toString() {
+        String result = "";
+        result += "Id: " + this.getId() + ", ";
+        result += "Score: " + this.getScore() + ", ";
+
+        result += "TopWords: ";
+        String[] topWords = this.getTopWords(3);
+        for (String topWord : topWords) {
+            result += topWord + " ";
+        }
+        return result;
     }
 
     @Override

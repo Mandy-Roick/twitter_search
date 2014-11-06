@@ -2,11 +2,9 @@ package org.twittersearch.app.search_engine;
 
 import org.twittersearch.app.helper.FileReaderHelper;
 import org.twittersearch.app.helper.TypeContainer;
-import org.twittersearch.app.topic_modelling.TopicContainer;
+import org.twittersearch.app.helper.TopicContainer;
 import org.twittersearch.app.topic_modelling.TweetPreprocessor;
 
-import java.io.FileInputStream;
-import java.io.ObjectInputStream;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -54,7 +52,7 @@ public class QueryExpander {
         String[] processedQuery = processQuery(query);
 
         Map<String, TypeContainer> types = FileReaderHelper.readTypes(filePrefix);
-        Map<Integer, String[]> topWords = FileReaderHelper.readTopWords(filePrefix);
+        Map<Integer, TopicContainer> topWords = FileReaderHelper.readTopWords(filePrefix);
 
         List<TopicContainer> topicsForExpansion = expandThroughTopicModel(processedQuery, types, topWords, topicPercentageThreshold);
         Map<String, String> stemmingDictionary = FileReaderHelper.readStemmingDictionary(filePrefix);
@@ -73,7 +71,7 @@ public class QueryExpander {
     }
 
     // Important to have a list as return value to hold the order
-    private static List<TopicContainer> expandThroughTopicModel(String[] query, Map<String, TypeContainer> types, Map<Integer,String[]> topWords, double topicPercentageThreshold) {
+    private static List<TopicContainer> expandThroughTopicModel(String[] query, Map<String, TypeContainer> types, Map<Integer,TopicContainer> topWords, double topicPercentageThreshold) {
         List<TopicContainer> topicsForExpansion = new ArrayList<TopicContainer>();
 
         for (String queryElement : query) {
@@ -82,7 +80,7 @@ public class QueryExpander {
 
                 Integer[] topicIndices = typeContainer.getBestTopics(topicPercentageThreshold);
                 for (Integer topicIndex : topicIndices) {
-                    TopicContainer topicForExpansion = new TopicContainer(topicIndex, topWords.get(topicIndex));
+                    TopicContainer topicForExpansion = topWords.get(topicIndex);
                     topicsForExpansion.add(topicForExpansion);
                 }
             }

@@ -8,6 +8,7 @@ import cc.mallet.types.*;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.twittersearch.app.helper.BetaAndTypesContainer;
 import org.twittersearch.app.helper.FileReaderHelper;
+import org.twittersearch.app.helper.TopicContainer;
 import org.twittersearch.app.helper.TypeContainer;
 
 import java.io.*;

@@ -2,7 +2,7 @@ package org.twittersearch.app.search_engine;
 
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
-import org.twittersearch.app.topic_modelling.TopicContainer;
+import org.twittersearch.app.helper.TopicContainer;
 import org.twittersearch.app.topic_modelling.TopicModelBuilder;
 import org.twittersearch.app.twitter_api_usage.TwitterManager;
 import twitter4j.TwitterException;
@@ -123,8 +123,10 @@ public class TopicSearchEngine {
             searchHits = esManager.searchFor(twitterQuery, date);
 
             for (SearchHit searchHit : searchHits) {
-                currentTweets.add(searchHit.getSource().toString());
-                System.out.println(searchHit.getSource());
+                Map<String, Object> fields = searchHit.getSource();
+                String tweetContent = fields.get("content").toString();
+                currentTweets.add(tweetContent);
+                System.out.println(tweetContent);
             }
 
             relevantTweets.put(topicForExpansion, currentTweets);
