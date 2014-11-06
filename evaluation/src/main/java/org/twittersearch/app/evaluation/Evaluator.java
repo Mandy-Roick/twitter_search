@@ -23,7 +23,7 @@ public class Evaluator
 {
 
     public static void main( String[] args ) {
-        String query = "baseball";
+        String query = "politics";
         int numberOfSampledTweets = 100000;
 
         //ElasticSearchManager esManager = new ElasticSearchManager();
@@ -96,7 +96,10 @@ public class Evaluator
             System.out.println(topicTweets.getKey());
             for (double[] sampledDistribution : sampledDistributions) {
                 System.out.print(sampledDistribution[topicId]);
-                System.out.print(" max: " + Collections.max(Arrays.asList(ArrayUtils.toObject(sampledDistribution))) + "\n");
+                List<Double> sampledList = Arrays.asList(ArrayUtils.toObject(sampledDistribution));
+                Double max = Collections.max(sampledList);
+
+                System.out.print(" max: " + max + "maxTopic: " + topics.get(sampledList.indexOf(max)) + "\n");
             }
             // sampledDistribution auswerten --> trifft es das Topic aus TopicContainer
         }
