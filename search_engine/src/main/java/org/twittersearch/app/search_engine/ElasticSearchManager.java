@@ -10,7 +10,10 @@ import org.elasticsearch.index.query.*;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Created by Mandy Roick on 02.10.2014.
@@ -84,5 +87,33 @@ public class ElasticSearchManager {
 //            //System.out.println(searchHit.getId());
 //            System.out.println(searchHit.getId() + ": " + searchHit.getScore() + " : " + searchHit.getSource());
 //        }
+    }
+
+    private SearchHits searchForUrlContentMissing(String[] tweetIds) {
+        FilterBuilder idFilterBuilder = FilterBuilders.idsFilter("tweet").addIds(tweetIds);
+        FilterBuilder existsFilterBuilder = FilterBuilders.existsFilter("url_content");
+        FilterBuilder filterBuilder = FilterBuilders.boolFilter().must(idFilterBuilder).mustNot(existsFilterBuilder);
+
+        SearchResponse response = this.client.prepareSearch().setPostFilter(filterBuilder)
+                .setFrom(0).setSize(10000).execute().actionGet();
+        return response.getHits();
+    }
+
+    public Long[] tweetsInESWithoutUrlContent(Collection<Long> tweetIds) {
+        String[] tweetIdStrings = new String[tweetIds.size()];
+        int i = 0;
+        for (Long tweetId : tweetIds) {
+            tweetIdStrings[i] = Long.toString(tweetId);
+            i++;
+        }
+
+        SearchHits tweetsWithoutUrlContent = searchForUrlContentMissing(tweetIdStrings);
+
+        List<Long> tweetIdsWithoutUrlContent = new ArrayList<Long>();
+        for (SearchHit tweetWithoutUrlContent : tweetsWithoutUrlContent) {
+            tweetIdsWithoutUrlContent.add(Long.valueOf(tweetWithoutUrlContent.getId()));
+        }
+
+        return tweetIdsWithoutUrlContent.toArray(new Long[tweetIdsWithoutUrlContent.size()]);
     }
 }

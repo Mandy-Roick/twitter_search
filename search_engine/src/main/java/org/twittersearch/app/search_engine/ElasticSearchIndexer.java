@@ -3,6 +3,8 @@ package org.twittersearch.app.search_engine;
 import au.com.bytecode.opencsv.CSVReader;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.client.Client;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 import org.twittersearch.app.twitter_api_usage.DBManager;
 import org.twittersearch.app.twitter_api_usage.TweetObject;
 
@@ -48,6 +50,7 @@ public class ElasticSearchIndexer {
     public static void indexFromDB(String date, Client client) {
         DBManager dbManager = new DBManager();
         Map<Long, TweetObject> tweets = dbManager.selectTweetsCreatedAt(date);
+        System.out.println(tweets.size() + " tweets have to be indexed.");
 
         String json;
         IndexResponse indexResponse;
@@ -55,12 +58,12 @@ public class ElasticSearchIndexer {
         for (TweetObject tweet : tweets.values()) {
             json = tweet.toJson();
             indexResponse = client.prepareIndex("twitter", "tweet", tweet.getId().toString()).setSource(json).execute().actionGet();
-            if(indexResponse.isCreated()) {
+            //if(indexResponse.isCreated()) {
                 if((counter % 10000) == 0) {
                     System.out.println(counter + ": " + indexResponse.getId());
                 }
                 counter++;
-            }
+            //}
         }
 
     }
@@ -69,19 +72,25 @@ public class ElasticSearchIndexer {
         DBManager dbManager = new DBManager();
         Map<Long, TweetObject> tweets = dbManager.selectTweetsCreatedAt(date);
         Set<Long> tweetsWithUrlContents = dbManager.selectTweetsWithUrlContentCreatedAt(date);
-        System.out.println(tweetsWithUrlContents.size() + " tweets with urls.");
+        ElasticSearchManager esManager = new ElasticSearchManager();
+        Long[] tweetsWhichNeedUrlContent = esManager.tweetsInESWithoutUrlContent(tweetsWithUrlContents);
+
+        System.out.println(tweetsWhichNeedUrlContent.length + " tweets which need url content.");
 
         String json;
         IndexResponse indexResponse;
         int counter = 0;
         TweetObject tweet;
-        for (Long tweetId : tweetsWithUrlContents) {
+        for (Long tweetId : tweetsWhichNeedUrlContent) {
             tweet = tweets.get(tweetId);
             tweets.remove(tweetId);
 
             if (tweet != null) {
                 List<String> urlContents = dbManager.selectUrlContentsForTweet(tweetId);
-                tweet.addUrlContents(urlContents);
+                for (String urlContent : urlContents) {
+                    tweet.addUrlContent(cleanUrlContent(urlContent));
+                }
+                //tweet.addUrlContents(urlContents);
             }
 
             json = tweet.toJson();
@@ -94,5 +103,13 @@ public class ElasticSearchIndexer {
             //}
         }
 
+    }
+
+    private static String cleanUrlContent(String urlContent) {
+        String cleanContent = "";
+        Document jsoupDocument = Jsoup.parse(urlContent);
+        cleanContent += jsoupDocument.title();
+        cleanContent += " " + jsoupDocument.text();
+        return cleanContent;
     }
 }

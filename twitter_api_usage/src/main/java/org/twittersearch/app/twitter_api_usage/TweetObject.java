@@ -62,7 +62,7 @@ public class TweetObject extends Object {
         if (!urlContents.isEmpty()) {
             JsonArray urlsObject = new JsonArray();
             for (String urlContent : this.urlContents) {
-                urlsObject.add(new JsonPrimitive(urlContent));
+                urlsObject.add(new JsonPrimitive("\"" + urlContent + "\""));
             }
             tweetObject.add("url_content", urlsObject);
         }
