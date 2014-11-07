@@ -685,4 +685,49 @@ public class DBManager {
         }
         return tweets;
     }
+
+    public List<TweetObject> selectTweetsCreatedAtWithEvaluationFlagNotNull(String date) {
+        List<TweetObject> tweets = new LinkedList<TweetObject>();
+        try {
+            Statement statement = connection.createStatement();
+            ResultSet result = statement.executeQuery("SELECT id, content, evaluation_flag FROM mandy_masterarbeit.twitter_tweet " +
+                    "WHERE (created_at = '" + date + "') AND NOT (evaluation_flag = 'null')");
+
+            TweetObject currentTweet;
+            while(result.next()) {
+                long tweetId = result.getLong(1);
+                String tweetContent = result.getString(2);
+                String evaluation_flag = result.getString(3);
+                currentTweet = new TweetObject(tweetId, tweetContent, evaluation_flag, date);
+                tweets.add(currentTweet);
+            }
+
+            statement.close();
+        } catch (SQLException e) {
+            System.out.println("Could not select tweets from DB which are created at: " + date + "!");
+            e.printStackTrace();
+        }
+        return tweets;
+    }
+
+    public Map<String, Integer> selectCountOfEvaluationFlags(String date) {
+        Map<String, Integer> counts = new HashMap<String, Integer>();
+        try {
+            Statement statement = connection.createStatement();
+            ResultSet result = statement.executeQuery("SELECT evaluation_flag, Count(*) FROM mandy_masterarbeit.twitter_tweet " +
+                    "WHERE (created_at = '" + date + "') AND NOT (evaluation_flag = 'null') GROUP BY evaluation_flag");
+
+            while(result.next()) {
+                String evaluationFlag = result.getString(1);
+                Integer count = result.getInt(2);
+                counts.put(evaluationFlag, count);
+            }
+
+            statement.close();
+        } catch (SQLException e) {
+            System.out.println("Could not select tweets from DB which are created at: " + date + "!");
+            e.printStackTrace();
+        }
+        return counts;
+    }
 }

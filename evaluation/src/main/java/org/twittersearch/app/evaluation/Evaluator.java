@@ -23,14 +23,14 @@ public class Evaluator
 {
 
     public static void main( String[] args ) {
-        String query = "politics";
-        int numberOfSampledTweets = 100000;
+        String query = "economy";
+        int numberOfSampledTweets = 145;
 
-        //ElasticSearchManager esManager = new ElasticSearchManager();
-        //esManager.addToIndex("2014-10-21");
-        Evaluator evaluator = new Evaluator();
+        ElasticSearchManager esManager = new ElasticSearchManager();
+        esManager.addToIndex("2014-10-21");
+        //Evaluator evaluator = new Evaluator();
         //evaluator.evaluateTopicBasedSearch(query, numberOfSampledTweets);
-        evaluator.evaulateTopicModel(query);
+        //evaluator.evaulateTopicModel(query);
     }
 
     private static int calculateNumberOfExpertTweets(String query, List<String> relevantTweets) {
@@ -53,8 +53,10 @@ public class Evaluator
     }
 
     public void evaluateTopicBasedSearch(String query, int numberOfSampledTweets) {
+        String date = "2014-10-21";
         // 1. Sample Tweets
-        Set<TweetObject> sampledTweets = sampleTweets("2014-10-21", query, numberOfSampledTweets);
+        //Set<TweetObject> sampledTweets = sampleTweets("2014-10-21", query, numberOfSampledTweets);
+        List<TweetObject> sampledTweets = dbManager.selectTweetsCreatedAtWithEvaluationFlagNotNull(date);
         List<String> sampledTweetsIndices = new ArrayList<String>();
         for (TweetObject sampledTweet : sampledTweets) {
             sampledTweetsIndices.add(String.valueOf(sampledTweet.getId()));
@@ -62,18 +64,27 @@ public class Evaluator
 
         // 2. Search for sample via Elastic Search
         List<String> relevantTweets1 = TopicSearchEngine.searchForTweetsViaESInSample(query, this.esManager, sampledTweetsIndices);
-        int numberOfFoundTweets1 = relevantTweets1.size();
-        int numberOfMatchingTweets1 = calculateNumberOfExpertTweets(query, relevantTweets1);
-        System.out.println(numberOfMatchingTweets1 + " have flag " + query + " " + numberOfFoundTweets1 + " have not.");
+        EvaluationResult evaluationResult1 = evaluateResult(query, relevantTweets1, sampledTweets.size(), date);
+        System.out.println(evaluationResult1);
 
         System.out.println("------------------------------------------------");
 
         String[][] expandedQuery = TopicSearchEngine.expandQueryForGivenDate(query, "2014-10-20");
         List<String> relevantTweets = TopicSearchEngine.searchForTweetsViaESInSample(expandedQuery, this.esManager, sampledTweetsIndices);
+        EvaluationResult evaluationResult = evaluateResult(query, relevantTweets, sampledTweets.size(), date);
+        System.out.println(evaluationResult);
 
-        int numberOfFoundTweets = relevantTweets.size();
-        int numberOfMatchingTweets = calculateNumberOfExpertTweets(query, relevantTweets);
-        System.out.println(numberOfMatchingTweets + " have flag " + query + " " + numberOfFoundTweets + " have not.");
+    }
+
+    private EvaluationResult evaluateResult(String query, List<String> answers, int numberOfAllTweets, String date) {
+        Map<String, Integer> evaluationFlagCounts = dbManager.selectCountOfEvaluationFlags(date);
+        int realPositives = evaluationFlagCounts.get(query);
+        int TP = calculateNumberOfExpertTweets(query, answers);
+        int FP = answers.size() - TP;
+        int FN = realPositives - TP;
+        int TN = numberOfAllTweets - TP - FP - FN;
+
+        return new EvaluationResult(TP, TN, FP, FN);
     }
 
     public double evaulateTopicModel(String query) {
@@ -166,10 +177,4 @@ public class Evaluator
         }
         return startingSet;
     }
-
-	public static double recall() {
-		return 0;
-		
-	}
-
 }
