@@ -25,7 +25,7 @@ public class TopicModelBuilder {
 
     public static void main(String[] args) {
         Calendar c = Calendar.getInstance();
-        c.set(2014, 9, 20); //Months start with 0 :(
+        c.set(2014, 10, 06); //Months start with 0 :(
         //c.add(Calendar.DATE, 1); //08 is for him a too large integer number
         learnTopicModel(c);
     }
@@ -53,7 +53,14 @@ public class TopicModelBuilder {
                 BetaAndTypesContainer betaAndTypes = FileReaderHelper.readTypesAndBeta(yesterdayTypesFileName);
                 Map<Integer, Integer> topicCounts = FileReaderHelper.readTopicCounts(yesterdayTopicsFileName);
                 List<Integer> ignoreTopics = calculateIgnoreTopics(topicsCutOffPercentage, topicCounts);
+
                 System.out.println("Number of deleted topics: " + ignoreTopics.size());
+                System.out.print("Ignore Topics: ");
+                for(Integer ignoreTopic : ignoreTopics) {
+                    System.out.print(ignoreTopic + " ");
+                }
+                System.out.println("\n");
+
                 Map<String, double[]> typeTopicProbabilites = calculateTypesSmoothedTopicCounts(betaAndTypes, ignoreTopics, numTopics);
                 model = new ParallelTopicModelExtension(typeTopicProbabilites, numTopics, 0.01*numTopics, 0.05);
             } else {
