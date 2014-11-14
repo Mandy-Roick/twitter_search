@@ -31,6 +31,7 @@ public class TopicModelBuilder {
     }
 
     public static String learnTopicModel(Calendar c) {
+        boolean withSeeding = false;
         String date = sdf.format(c.getTime());
         String inputFileName = "mallet_input_file_" + date + ".csv";
 
@@ -49,7 +50,7 @@ public class TopicModelBuilder {
             String yesterdayTypesFileName = "trimmed_tm-" + numTopics + "_" + sdf.format(c.getTime())+ FileReaderHelper.FS_TYPE_TOPIC_COUNTS;
             String yesterdayTopicsFileName = "trimmed_tm-" + numTopics + "_" + sdf.format(c.getTime())+ FileReaderHelper.FS_TOP_WORDS;
             File yesterdayTopicsFile = new File(yesterdayTopicsFileName);
-            if (yesterdayTopicsFile.exists()) {
+            if (withSeeding && yesterdayTopicsFile.exists()) {
                 BetaAndTypesContainer betaAndTypes = FileReaderHelper.readTypesAndBeta(yesterdayTypesFileName);
                 Map<Integer, Integer> topicCounts = FileReaderHelper.readTopicCounts(yesterdayTopicsFileName);
                 List<Integer> ignoreTopics = calculateIgnoreTopics(topicsCutOffPercentage, topicCounts);
