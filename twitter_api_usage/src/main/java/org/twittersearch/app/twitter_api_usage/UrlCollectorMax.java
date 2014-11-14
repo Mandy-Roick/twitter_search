@@ -25,37 +25,46 @@ public class UrlCollectorMax {
         DBManager dbManager = new DBManager();
         int crawlCounter = 0;
 
-        System.out.println("Reloading URL list. Crawled URLs: " + crawlCounter);
+        //System.out.println("Reloading URL list. Crawled URLs: " + crawlCounter);
         List<CrawlUrl> urls = dbManager.selectUrlsWithoutTextForDate(date);
         Collections.shuffle(urls);
         List<CrawlUrl> failedURLs = new ArrayList<CrawlUrl>();
         HashMap<String, Long> domainDelays = new HashMap<String, Long>();
         int crawlDelayMS = 5000;
+        int counterOfTrulyFailed = 0;
 
         while (true) {
             System.out.println("Retrying URLs. Crawled URLs: " + crawlCounter);
             for (CrawlUrl url : urls) {
                 try {
                     String currentDomain = url.getDomain();
-                    if (domainDelays.containsKey(currentDomain) &&
-                            (domainDelays.get(currentDomain) < System.currentTimeMillis())) {
+                    Long currentDomainDelay = domainDelays.get(currentDomain);
+                    if ((currentDomainDelay != null) &&
+                            (currentDomainDelay < System.currentTimeMillis())) {
                         //have to wait to crawl
-                        failedURLs.add(url);
+                        //failedURLs.add(url);
+                        System.out.println("Wait for domain to be available again.");
+                        Thread.sleep(System.currentTimeMillis() - currentDomainDelay);
                     } else {
                         String content = crawlURL(url.getURL());
                         crawlCounter++;
-                        if (crawlCounter % 100 == 0) System.out.println("Crawled " + crawlCounter + " URLs so far. Failed: " + failedURLs.size());
+                        if (crawlCounter % 100 == 0) System.out.println("Crawled " + crawlCounter + " URLs so far. Failed because of timing: " + failedURLs.size() + ", because of errors: " + counterOfTrulyFailed);
 
                         if (content != null) {
                             url.setContent(content);
                             dbManager.writeUrlContentToDB(url.getTweetId(), url.getUrlString(), true, url.getContent());
                         } else {
-                            failedURLs.add(url);
+                            counterOfTrulyFailed++;
+                            //failedURLs.add(url);
                         }
                         domainDelays.put(currentDomain, System.currentTimeMillis() + crawlDelayMS);
                     }
                 } catch (MalformedURLException e) {
                     System.out.println("Malformed URL.");
+                    System.out.println(e.toString());
+                    //e.printStackTrace();
+                } catch (InterruptedException e) {
+                    System.out.println("Interrupt while waiting for domain.");
                     System.out.println(e.toString());
                     //e.printStackTrace();
                 }

@@ -329,7 +329,9 @@ public class DBManager {
             statement.execute();
             statement.close();
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.out.println("UrlContent could not be updated in DB for URL " + url);
+            System.out.println(e.toString());
+            //e.printStackTrace();
         }
     }
 
