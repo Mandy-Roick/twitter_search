@@ -33,6 +33,10 @@ public class TweetToDBWriter {
         }
     }
 
+    public void writeTweetLanguageToDB (Status tweet) {
+        this.dbManager.writeTweetLanguageToDB(tweet);
+    }
+
     public void closeDB() {
         System.out.println("---------------------------  close DB for cleanup  ---------------------------------");
         try {

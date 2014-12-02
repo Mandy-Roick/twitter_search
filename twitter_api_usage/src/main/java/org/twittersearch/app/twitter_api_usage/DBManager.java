@@ -232,6 +232,28 @@ public class DBManager {
         }
     }
 
+    public void writeTweetLanguageToDB(Status tweet) {
+        createTweetLanguage(tweet);
+    }
+
+    private void createTweetLanguage(Status tweet) {
+        try {
+            PreparedStatement statement = connection.prepareStatement("" +
+                    "INSERT INTO mandy_masterarbeit.twitter_tweet_language(id, created_at, language)" +
+                    "VALUES (?, ?, ?)");
+
+            statement.setLong(1, tweet.getId());
+            java.sql.Date sqlDate = new Date(tweet.getCreatedAt().getTime());
+            statement.setDate(2, sqlDate);
+            statement.setString(3, tweet.getLang());
+
+            statement.execute();
+            statement.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
     //---------------------------------    Hashtags    ------------------------------------//
 
     public void writeHashtagsToDB(Status tweet) {

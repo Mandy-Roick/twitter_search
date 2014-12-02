@@ -5,12 +5,15 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.*;
 import java.nio.charset.Charset;
+import java.sql.Timestamp;
 import java.util.*;
 
 /**
  * Created by Mandy Roick on 04.11.2014.
  */
 public class UrlCollectorMax {
+
+    private static final String[] ignoreUrls = {"http://t.co/RLTg4qjBJp","http://t.co/mWSt9ZJFgF","http://t.co/E3qajsmMkp","http://t.co/4WyMTyLiWR","http://t.co/6vkvlngtt7","http://t.co/CznpZqpM0L"};
 
     public static void main(String[] args) {
         String date = "2014-10-21";
@@ -27,6 +30,19 @@ public class UrlCollectorMax {
 
         //System.out.println("Reloading URL list. Crawled URLs: " + crawlCounter);
         List<CrawlUrl> urls = dbManager.selectUrlsWithoutTextForDate(date);
+
+        for (String ignoreUrl : ignoreUrls) {
+            CrawlUrl ignoreCrawlUrl = null;
+            for (CrawlUrl url : urls) {
+                if (url.urlEquals(ignoreUrl)) {
+                    ignoreCrawlUrl = url;
+                    break;
+                }
+            }
+            if (ignoreCrawlUrl != null)
+                urls.remove(ignoreCrawlUrl);
+        }
+
         Collections.shuffle(urls);
         List<CrawlUrl> failedURLs = new ArrayList<CrawlUrl>();
         HashMap<String, Long> domainDelays = new HashMap<String, Long>();
@@ -48,7 +64,12 @@ public class UrlCollectorMax {
                     } else {
                         String content = crawlURL(url.getURL());
                         crawlCounter++;
-                        if (crawlCounter % 100 == 0) System.out.println("Crawled " + crawlCounter + " URLs so far. Failed because of timing: " + failedURLs.size() + ", because of errors: " + counterOfTrulyFailed);
+                        if (crawlCounter % 20 == 0) {
+                            java.util.Date currentDate= new java.util.Date();
+                            System.out.println(new Timestamp(currentDate.getTime()) + ": Crawled " + crawlCounter +
+                                    " URLs so far. Failed because of errors: " + counterOfTrulyFailed + ". Domains: " + domainDelays.size());
+
+                        }
 
                         if (content != null) {
                             url.setContent(content);
@@ -78,6 +99,7 @@ public class UrlCollectorMax {
 
     private static String crawlURL(URL url) {
         //crawl site
+        System.out.println(url);
         StringBuilder text = new StringBuilder();
         String line = "";
         String content = "";
@@ -91,6 +113,12 @@ public class UrlCollectorMax {
             urlconn.setRequestMethod("GET");
             urlconn.connect();
             Charset charset = Charset.forName("UTF-8");
+            if (urlconn.getHeaderField("Content-Type").contains("audio/mpeg")) {
+                System.out.println("null");
+                return null;
+            }
+            //System.out.println("Content-Type: " + urlconn.getHeaderField("Content-Type"));
+            //System.out.println("length: " + urlconn.getHeaderField("Content-Length"));
             in = new BufferedReader(new InputStreamReader(urlconn.getInputStream(), charset));
             while ((line = in.readLine()) != null) text.append(line);
 

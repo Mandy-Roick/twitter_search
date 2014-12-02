@@ -76,7 +76,7 @@ public class TwitterManager
     	  .setOAuthAccessTokenSecret("cw4gnG4guCdBocWGfLRAjMdpyrVKCeQTVdcksFyz9jJLo");
         TwitterStream twitterStream = new TwitterStreamFactory(cb.build()).getInstance();
 
-        TweetListener listener = new TweetListener();
+        TweetLanguageListener listener = new TweetLanguageListener();
         twitterStream.addListener(listener);
         twitterStream.sample();
         //listener.search("office");

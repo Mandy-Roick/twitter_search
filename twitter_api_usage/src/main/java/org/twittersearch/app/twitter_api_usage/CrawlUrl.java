@@ -45,4 +45,8 @@ public class CrawlUrl {
         this.content = content;
     }
 
+    public boolean urlEquals(String url) {
+        return (this.urlString.equals(url));
+    }
+
 }
