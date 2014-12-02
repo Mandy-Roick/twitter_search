@@ -25,13 +25,13 @@ public class TopicModelBuilder {
 
     public static void main(String[] args) {
         Calendar c = Calendar.getInstance();
-        c.set(2014, 10, 06); //Months start with 0 :(
+        c.set(2014, 9, 20); //Months start with 0 :(
         //c.add(Calendar.DATE, 1); //08 is for him a too large integer number
         learnTopicModel(c);
     }
 
     public static String learnTopicModel(Calendar c) {
-        boolean withSeeding = false;
+        boolean withSeeding = true;
         String date = sdf.format(c.getTime());
         String inputFileName = "mallet_input_file_" + date + ".csv";
 
@@ -266,7 +266,8 @@ public class TopicModelBuilder {
         StemmerPipe stemmer = new StemmerPipe();
         prunedPipeList.add(stemmer);
 
-        Map<String, Integer> wordFrequencies = getWordFrequencies(initialInstances);
+        Map<String, Integer> documentFrequencies = getDocumentFrequencies(initialInstances);
+        Map<String, Integer> wordFrequencies = documentFrequencies;//getWordFrequencies(initialInstances);
         List<String> cutOffWords = getCutOffWords(wordFrequencies, 10);
         TokenSequenceRemoveStopwords cutOffStopWordsPipe = new TokenSequenceRemoveStopwords();
         cutOffStopWordsPipe.addStopWords(cutOffWords.toArray(new String[cutOffWords.size()]));
@@ -451,5 +452,33 @@ public class TopicModelBuilder {
             }
         }
         return wordFrequencies;
+    }
+
+    private static Map<String, Integer> getDocumentFrequencies(InstanceList instances) {
+        // Collect frequencies of each word.
+        Map<String, Integer> documentFrequencies = new HashMap<String, Integer>();
+        FeatureSequence data;
+        String word;
+        Integer count;
+        Set<String> currentWords;
+
+        for(Instance instance : instances) {
+            data = (FeatureSequence) instance.getData();
+            currentWords = new HashSet<String>();
+            for (int i = 0; i < data.size(); i++) {
+                word = data.get(i).toString();
+                currentWords.add(word);
+            }
+            for (String uniqueWord : currentWords) {
+                count = documentFrequencies.get(uniqueWord);
+                if (count == null) {
+                    documentFrequencies.put(uniqueWord, 1);
+                }
+                else {
+                    documentFrequencies.put(uniqueWord, count + 1);
+                }
+            }
+        }
+        return documentFrequencies;
     }
 }
