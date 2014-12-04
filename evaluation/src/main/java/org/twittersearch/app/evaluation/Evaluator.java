@@ -15,7 +15,9 @@ import org.twittersearch.app.topic_modelling.TopicModelBuilder;
 import org.twittersearch.app.twitter_api_usage.DBManager;
 import org.twittersearch.app.twitter_api_usage.TweetObject;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.*;
 
 /**
@@ -29,7 +31,7 @@ public class Evaluator
 
         Evaluator evaluator = new Evaluator();
 
-        String[] queries = {"politics", "ukraine", "ebola", "sports", "economy", "basketball", "baseball", "marketing", "music", "hiphop"};
+        String[] queries = {"politics", "ukraine", "ebola", "sports", "economy", "basketball", "baseball", "marketing", "music", "hip hop"};
         boolean samplingNotOnlyExperts = true;
         boolean positionNotPrecision = true;
 
@@ -59,6 +61,7 @@ public class Evaluator
             }
             //System.out.println(relevantTweet);
         }
+        Collections.sort(positions);
         return positions;
     }
 
@@ -87,25 +90,74 @@ public class Evaluator
 
         // 2. Search for sample via Elastic Search
         System.out.println(query);
+        String filePrefix = "answers\\evaluation_" + query + "_" + sampledTweets.size();
 
         // 2.1. Baseline simple query search
         List<SearchAnswer> baseLineAnswers = TopicSearchEngine.searchForTweetsViaESInSample(query, this.esManager, sampledTweetsIndices);
         EvaluationResult baseLineEvaluation = evaluateResultPositions(query, baseLineAnswers, sampledTweets.size(), date);
         System.out.println(baseLineEvaluation);
+        printAnswers("baseline", baseLineAnswers, query, sampledTweets.size());
 
         // 2.2. Massoudi algorithm as competitor
-        String[] massoudisExpandedQuery = MassoudiQueryExpander.expand(query, date, 10, 50);
+        String massoudisExpandedQuery = MassoudiQueryExpander.expand(query, date, 10, 50);
+        printMassoudiExpandedQuery(query, date, massoudisExpandedQuery);
+        System.out.println("Massoudi Expanded Query: " + massoudisExpandedQuery);
         List<SearchAnswer> massoudiAnswers = TopicSearchEngine.searchForTweetsViaESInSample(massoudisExpandedQuery, this.esManager, sampledTweetsIndices);
         EvaluationResult massoudiEvaluation = evaluateResultPositions(query, massoudiAnswers, sampledTweets.size(), date);
         System.out.println(massoudiEvaluation);
+        printAnswers("massoudi", massoudiAnswers, query, sampledTweets.size());
 
         String[][] expandedQuery = TopicSearchEngine.expandQueryForGivenDate(query, dateTM);
-        List<SearchAnswer> answers = TopicSearchEngine.searchForTweetsViaESInSample(expandedQuery, this.esManager, sampledTweetsIndices);
-        EvaluationResult evaluationResult = evaluateResultPositions(query, answers, sampledTweets.size(), date);
-        System.out.println(evaluationResult);
+        List<SearchAnswer> topicBasedAnswers = TopicSearchEngine.searchForTweetsViaESInSample(expandedQuery, this.esManager, sampledTweetsIndices);
+        EvaluationResult topicBasedEvaluation = evaluateResultPositions(query, topicBasedAnswers, sampledTweets.size(), date);
+        System.out.println(topicBasedEvaluation);
+        printAnswers("topic-based", topicBasedAnswers, query, sampledTweets.size());
 
+        printEvaluations(filePrefix, baseLineEvaluation, massoudiEvaluation, topicBasedEvaluation);
 
+        //data which would be good to write to files:
+        // - THE QUERY EXPANSION FROM MASSOUDI because it is always the same
+        // - found tweets probably one file for each algorithm massoudi_answers_query -> first line expansion then results?, how many tweets found?, ...
+        // - positions of relevant tweets for each algorithm for each query
+        //For random additional results use sampleRandomly with starting set
         //TODO: print evaluations to file; Add MAP to Evaluation (print also the positions of relevant tweets)
+    }
+
+    private void printEvaluations(String filePrefix, EvaluationResult baseLineEvaluation, EvaluationResult massoudiEvaluation, EvaluationResult topicBasedEvaluation) {
+        try {
+            PrintWriter evaluationWriter = new PrintWriter(filePrefix + ".results");
+            evaluationWriter.println("baseline, " + baseLineEvaluation);
+            evaluationWriter.println("massoudi, " + massoudiEvaluation);
+            evaluationWriter.println("topic-based, " + topicBasedEvaluation);
+            evaluationWriter.close();
+        } catch (FileNotFoundException e) {
+            System.out.println("Could not write evaluation results.");
+            e.printStackTrace();
+        }
+    }
+
+    private void printAnswers(String algorithm, List<SearchAnswer> answers, String query, int sampleSize) {
+        try {
+            PrintWriter answerWriter = new PrintWriter("answers\\" + algorithm + "_" + query + "_" + sampleSize + ".results");
+            for (SearchAnswer answer : answers) {
+                answerWriter.println(answer);
+            }
+            answerWriter.close();
+        } catch (FileNotFoundException e) {
+            System.out.println("Could not write answers for algorithm: " + algorithm);
+            e.printStackTrace();
+        }
+    }
+
+    private void printMassoudiExpandedQuery(String query, String date, String massoudisExpandedQuery) {
+        try {
+            PrintWriter massoudiExpandedQueryWriter = new PrintWriter("massoudi_" + query + "_" + date + ".results");
+            massoudiExpandedQueryWriter.println(massoudisExpandedQuery);
+            massoudiExpandedQueryWriter.close();
+        } catch (FileNotFoundException e) {
+            System.out.println("Could not write massoudi expanded query");
+            e.printStackTrace();
+        }
     }
 
     private EvaluationResult evaluateResult(String query, List<SearchAnswer> answers, int numberOfAllTweets, String date) {

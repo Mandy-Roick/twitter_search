@@ -2,6 +2,10 @@ package org.twittersearch.app.search_engine;
 
 import org.twittersearch.app.topic_modelling.TweetPreprocessor;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -16,20 +20,25 @@ public class MassoudiQueryExpander {
         String date = "2014-10-20";
         String[] expandedQuery;
 
-        if (args.length == 1 ) {
-            expandedQuery = expand(args[1], date, k, 50);
-        } else {
-            expandedQuery = expand("politics", date, k, 50);
-        }
+//        if (args.length == 1 ) {
+//            expandedQuery = expand(args[1], date, k, 50);
+//        } else {
+//            expandedQuery = expand("politics", date, k, 50);
+//        }
 
-        for (String queryElement : expandedQuery) {
-            System.out.print(queryElement + " ");
-        }
+//        for (String queryElement : expandedQuery) {
+//            System.out.print(queryElement + " ");
+//        }
     }
 
-    public static String[] expand(String query, String date, int k, int cutOffFrequency) {
-        String[] processedQuery = processQuery(query);
+    public static String expand(String query, String date, int k, int cutOffFrequency) {
+        String fileName = "massoudi_" + query + "_" + date + ".results";
+        File massoudiExpandedQuery = new File(fileName);
+        if (massoudiExpandedQuery.exists()) {
+            return readMassoudiExpandedQueryFile(fileName);
+        }
 
+        String[] processedQuery = processQuery(query);
         List<MassoudiExpansionTerm> termsOccurringWithQuery = searchForExpansionTerms(processedQuery, date);
 
         Set<String> expandedQuerySet = new HashSet<String>();
@@ -44,7 +53,25 @@ public class MassoudiQueryExpander {
             }
         }
 
-        return expandedQuerySet.toArray(new String[k]);
+        String expandedQuery = "";
+        for (String queryTerm : expandedQuerySet) {
+            expandedQuery += queryTerm + " ";
+        }
+
+        return expandedQuery;
+    }
+
+    private static String readMassoudiExpandedQueryFile(String fileName) {
+        String inputLine;
+        try {
+            BufferedReader br = new BufferedReader(new FileReader(fileName));
+            inputLine = br.readLine();
+            return inputLine;
+        } catch (java.io.IOException e) {
+            System.out.println("Could not read MassoudiExpandedQuery");
+            e.printStackTrace();
+        }
+        return "";
     }
 
     private static List<MassoudiExpansionTerm> searchForExpansionTerms(String[] query, String date) {

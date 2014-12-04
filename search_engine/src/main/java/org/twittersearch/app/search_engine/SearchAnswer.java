@@ -37,4 +37,14 @@ public class SearchAnswer {
     public int getPosition() {
         return this.topicRank + this.numberOfTopics * rank;
     }
+
+    @Override
+    public String toString() {
+        String result = " ";
+        result += "id: " + fields.get("id") + " ";
+        result += "evaluation_flag: " + this.getEvaluationFlag() + " ";
+        result += "content: " + fields.get("content");
+
+        return result;
+    }
 }
