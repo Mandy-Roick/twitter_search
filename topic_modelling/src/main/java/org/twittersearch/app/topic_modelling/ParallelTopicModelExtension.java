@@ -1290,7 +1290,54 @@ public class ParallelTopicModelExtension implements Serializable {
                 }
 
                 out.println(topic + "\t" + alphabet.lookupObject(type) + "\t" + weight);
+// here i need to divide weight through number of types * topic count
+            }
+        }
+    }
 
+    public void printTopicWordProbabilities(PrintWriter out) throws IOException {
+        // Probably not the most efficient way to do this...
+
+        double[] topicOverallWeights = new double[numTopics];
+        Arrays.fill(topicOverallWeights, 0.0);
+
+        double[][] topicTypeWeights = new double[numTopics][numTypes];
+
+        for (int topic = 0; topic < numTopics; topic++) {
+            for (int type = 0; type < numTypes; type++) {
+
+                int[] topicCounts = typeTopicCounts[type];
+
+                double weight = beta;
+
+                int index = 0;
+                // Iterate over all topics for the type but only act when matching topic of the loop is found
+                while (index < topicCounts.length &&
+                        topicCounts[index] > 0) {
+
+                    int currentTopic = topicCounts[index] & topicMask;
+
+                    // weight is initially beta and than you add the topic count
+                    if (currentTopic == topic) {
+                        weight += topicCounts[index] >> topicBits;
+                        break;
+                    }
+
+                    index++;
+                }
+
+                // normalize weight
+                //weight /= (numTypes*beta + topicScores[topic]);
+                topicOverallWeights[topic] += weight;
+                topicTypeWeights[topic][type] = weight;
+                //out.println(topic + "\t" + alphabet.lookupObject(type) + "\t" + weight);
+            }
+        }
+
+        for (int topic = 0; topic < numTopics; topic++) {
+            for (int type = 0; type < numTypes; type++) {
+                double normalizedWeight = topicTypeWeights[topic][type] / topicOverallWeights[topic];
+                out.println(topic + "\t" + alphabet.lookupObject(type) + "\t" + normalizedWeight);
             }
         }
     }

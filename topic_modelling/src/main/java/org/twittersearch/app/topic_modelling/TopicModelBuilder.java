@@ -81,6 +81,7 @@ public class TopicModelBuilder {
             TopicContainer[] topics = extractTopicScores(numTopics, model);
             writeTopWordsToCsv(filePrefix, model, topics);
             writeTopicInferencer(filePrefix, model.getInferencer());
+            writeTypeTopicProbabilities(filePrefix, model, topics);
 
             //model.getInferencer().writeInferredDistributions(instances, new File(filePrefix + "_distributions.results"),
             //                                                 500, 50, 50, 0.01, 50);
@@ -105,6 +106,15 @@ public class TopicModelBuilder {
         }
 
         return filePrefix;
+    }
+
+    private static void writeTypeTopicProbabilities(String filePrefix, ParallelTopicModelExtension model, TopicContainer[] topics) {
+        try {
+            model.printTopicWordProbabilities(new PrintWriter(new File(filePrefix + "_wordprobabilities.results")));
+        } catch (IOException e) {
+            System.out.println("Could not write word probabilities.");
+            e.printStackTrace();
+        }
     }
 
     private static List<Integer> calculateIgnoreTopics(double cutOffPercentage, Map<Integer, Integer> topicCounts) {
