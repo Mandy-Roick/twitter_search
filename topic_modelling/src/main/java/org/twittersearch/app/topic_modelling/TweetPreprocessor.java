@@ -15,6 +15,13 @@ import java.util.regex.Pattern;
  */
 public class TweetPreprocessor {
 
+    public static void main(String[] args){
+        String[] splitted = StringUtils.splitByCharacterTypeCamelCase("EMABiggestFans1D");
+        for (String split : splitted) {
+            System.out.println(split);
+        }
+    }
+
     Object2ObjectMap<String, String[]> splitHashtags;
 
     public TweetPreprocessor() {

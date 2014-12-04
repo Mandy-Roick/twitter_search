@@ -11,6 +11,8 @@ import java.util.regex.Pattern;
 public class RegexManager {
     public static void main(String[] args) {
 
+        String tweet = "{\"id\":524147578901102592,\"content\":\"\"@Emmanuel_makina @austinmusamali @JacksonKizito @Aswo_Moli politics of perception!\"\",\"evaluation_flag\":null,\"created_at\":\"2014-10-20\"}";
+
         String url = "http://t.co/1hYdDxCoSR";
         try {
             URI uri = new URI(url);
