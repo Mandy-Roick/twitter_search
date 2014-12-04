@@ -7,6 +7,8 @@ import cc.mallet.types.InstanceList;
 import org.apache.commons.lang.ArrayUtils;
 import org.twittersearch.app.helper.FileReaderHelper;
 import org.twittersearch.app.search_engine.ElasticSearchManager;
+import org.twittersearch.app.search_engine.MassoudiQueryExpander;
+import org.twittersearch.app.search_engine.SearchAnswer;
 import org.twittersearch.app.search_engine.TopicSearchEngine;
 import org.twittersearch.app.helper.TopicContainer;
 import org.twittersearch.app.topic_modelling.TopicModelBuilder;
@@ -23,25 +25,41 @@ public class Evaluator
 {
 
     public static void main( String[] args ) {
-        String query = "economy";
-        int numberOfSampledTweets = 145;
+        int numberOfSampledTweets = 1000;
 
-        ElasticSearchManager esManager = new ElasticSearchManager();
-        esManager.addToIndex("2014-10-21");
-        //Evaluator evaluator = new Evaluator();
-        //evaluator.evaluateTopicBasedSearch(query, numberOfSampledTweets);
+        Evaluator evaluator = new Evaluator();
+
+        String[] queries = {"politics", "ukraine", "ebola", "sports", "economy", "basketball", "baseball", "marketing", "music", "hiphop"};
+        boolean samplingNotOnlyExperts = true;
+        boolean positionNotPrecision = true;
+
+        for (String query : queries) {
+            evaluator.evaluateTopicBasedSearch(query, numberOfSampledTweets, samplingNotOnlyExperts);
+        }
         //evaluator.evaulateTopicModel(query);
     }
 
-    private static int calculateNumberOfExpertTweets(String query, List<String> relevantTweets) {
+    private static int calculateNumberOfExpertTweets(String query, List<SearchAnswer> answers) {
         int numberOfMatchingTweets = 0;
-        for (String relevantTweet : relevantTweets) {
-            if (relevantTweet.contains("evaluation_flag=" + query)) {
+        for (SearchAnswer answer : answers) {
+            if (answer.getEvaluationFlag().equals(query)) {
                 numberOfMatchingTweets++;
             }
             //System.out.println(relevantTweet);
         }
         return numberOfMatchingTweets;
+    }
+
+    private static List<Integer> calculatePositionsOfExpertTweets(String query, List<SearchAnswer> answers) {
+        List<Integer> positions = new ArrayList<Integer>();
+        for (SearchAnswer answer : answers) {
+            String currentEvaluationFlag = answer.getEvaluationFlag();
+            if (currentEvaluationFlag != null && currentEvaluationFlag.equals(query)) {
+                positions.add(answer.getPosition());
+            }
+            //System.out.println(relevantTweet);
+        }
+        return positions;
     }
 
     private DBManager dbManager;
@@ -52,31 +70,45 @@ public class Evaluator
         this.esManager = new ElasticSearchManager();
     }
 
-    public void evaluateTopicBasedSearch(String query, int numberOfSampledTweets) {
+    public void evaluateTopicBasedSearch(String query, int numberOfSampledTweets, boolean samplingNotOnlyExperts) {
         String date = "2014-10-21";
+        String dateTM = "2014-10-20";
         // 1. Sample Tweets
-        //Set<TweetObject> sampledTweets = sampleTweets("2014-10-21", query, numberOfSampledTweets);
-        List<TweetObject> sampledTweets = dbManager.selectTweetsCreatedAtWithEvaluationFlagNotNull(date);
+        Collection<TweetObject> sampledTweets;
+        if (samplingNotOnlyExperts) {
+            sampledTweets = sampleTweets(date, query, numberOfSampledTweets);
+        } else {
+            sampledTweets = dbManager.selectTweetsCreatedAtWithEvaluationFlagNotNull(date);
+        }
         List<String> sampledTweetsIndices = new ArrayList<String>();
         for (TweetObject sampledTweet : sampledTweets) {
             sampledTweetsIndices.add(String.valueOf(sampledTweet.getId()));
         }
 
         // 2. Search for sample via Elastic Search
-        List<String> relevantTweets1 = TopicSearchEngine.searchForTweetsViaESInSample(query, this.esManager, sampledTweetsIndices);
-        EvaluationResult evaluationResult1 = evaluateResult(query, relevantTweets1, sampledTweets.size(), date);
-        System.out.println(evaluationResult1);
+        System.out.println(query);
 
-        System.out.println("------------------------------------------------");
+        // 2.1. Baseline simple query search
+        List<SearchAnswer> baseLineAnswers = TopicSearchEngine.searchForTweetsViaESInSample(query, this.esManager, sampledTweetsIndices);
+        EvaluationResult baseLineEvaluation = evaluateResultPositions(query, baseLineAnswers, sampledTweets.size(), date);
+        System.out.println(baseLineEvaluation);
 
-        String[][] expandedQuery = TopicSearchEngine.expandQueryForGivenDate(query, "2014-10-20");
-        List<String> relevantTweets = TopicSearchEngine.searchForTweetsViaESInSample(expandedQuery, this.esManager, sampledTweetsIndices);
-        EvaluationResult evaluationResult = evaluateResult(query, relevantTweets, sampledTweets.size(), date);
+        // 2.2. Massoudi algorithm as competitor
+        String[] massoudisExpandedQuery = MassoudiQueryExpander.expand(query, date, 10, 50);
+        List<SearchAnswer> massoudiAnswers = TopicSearchEngine.searchForTweetsViaESInSample(massoudisExpandedQuery, this.esManager, sampledTweetsIndices);
+        EvaluationResult massoudiEvaluation = evaluateResultPositions(query, massoudiAnswers, sampledTweets.size(), date);
+        System.out.println(massoudiEvaluation);
+
+        String[][] expandedQuery = TopicSearchEngine.expandQueryForGivenDate(query, dateTM);
+        List<SearchAnswer> answers = TopicSearchEngine.searchForTweetsViaESInSample(expandedQuery, this.esManager, sampledTweetsIndices);
+        EvaluationResult evaluationResult = evaluateResultPositions(query, answers, sampledTweets.size(), date);
         System.out.println(evaluationResult);
 
+
+        //TODO: print evaluations to file; Add MAP to Evaluation (print also the positions of relevant tweets)
     }
 
-    private EvaluationResult evaluateResult(String query, List<String> answers, int numberOfAllTweets, String date) {
+    private EvaluationResult evaluateResult(String query, List<SearchAnswer> answers, int numberOfAllTweets, String date) {
         Map<String, Integer> evaluationFlagCounts = dbManager.selectCountOfEvaluationFlags(date);
         int realPositives = evaluationFlagCounts.get(query);
         int TP = calculateNumberOfExpertTweets(query, answers);
@@ -85,6 +117,14 @@ public class Evaluator
         int TN = numberOfAllTweets - TP - FP - FN;
 
         return new EvaluationResult(TP, TN, FP, FN);
+    }
+
+    private EvaluationResult evaluateResultPositions(String query, List<SearchAnswer> answers, int numberOfAllTweets, String date) {
+        Map<String, Integer> evaluationFlagCounts = dbManager.selectCountOfEvaluationFlags(date);
+        int realPositives = evaluationFlagCounts.get(query);
+        List<Integer> positions = calculatePositionsOfExpertTweets(query, answers);
+
+        return new EvaluationResult(positions);
     }
 
     public double evaulateTopicModel(String query) {

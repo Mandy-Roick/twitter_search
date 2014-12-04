@@ -43,7 +43,7 @@ public class TopicSearchEngine {
         //}
 
         String filePrefix = TopicModelBuilder.learnTopicModel(calendarOfYesterday);
-        String[][] expandedQuery = QueryExpander.expand(query, 0.05, 3, filePrefix);
+        String[][] expandedQuery = QueryExpander.expand(query, 0.05, 5, filePrefix);
 
         return expandedQuery;
     }
@@ -52,7 +52,7 @@ public class TopicSearchEngine {
 
         //String filePrefix = TopicModelBuilder.learnTopicModel(calendarOfYesterday);
         String filePrefix = "trimmed_tm-200_" + date;
-        String[][] expandedQuery = QueryExpander.expand(query, 0.05, 3, filePrefix);
+        String[][] expandedQuery = QueryExpander.expand(query, 0.05, 5, filePrefix);
 
         return expandedQuery;
     }
@@ -135,11 +135,14 @@ public class TopicSearchEngine {
         return relevantTweets;
     }
 
-    public static List<String> searchForTweetsViaESInSample(String[][] expandedQuery, ElasticSearchManager esManager, List<String> sampledTweets) {
-        List<String> tweets = new ArrayList<String>();
+    public static List<SearchAnswer> searchForTweetsViaESInSample(String[][] expandedQuery, ElasticSearchManager esManager, List<String> sampledTweets) {
+        List<SearchAnswer> tweets = new ArrayList<SearchAnswer>();
+        int numberOfTopics = expandedQuery.length;
 
+        int topicRank = 0;
         SearchHits searchHits;
         for (String[] topicQuery : expandedQuery) {
+            int rank = 0;
             String twitterQuery = "";
             for (String queryElement : topicQuery) {
                 twitterQuery += queryElement + " ";
@@ -148,26 +151,41 @@ public class TopicSearchEngine {
             searchHits = esManager.searchForInSample(twitterQuery, sampledTweets);
 
             for (SearchHit searchHit : searchHits) {
-                tweets.add(searchHit.getSource().toString());
-                System.out.println(searchHit.getSource());
+                SearchAnswer answer = new SearchAnswer(searchHit.getSource().toString(), searchHit.sourceAsMap(), rank, topicRank, numberOfTopics);
+                tweets.add(answer);
+                rank++;
+                //System.out.println(searchHit.getSource());
             }
+            topicRank++;
         }
 
         return tweets;
     }
 
-    public static List<String> searchForTweetsViaESInSample(String query, ElasticSearchManager esManager, List<String> sampledTweets) {
-        List<String> tweets = new ArrayList<String>();
+    public static List<SearchAnswer> searchForTweetsViaESInSample(String query, ElasticSearchManager esManager, List<String> sampledTweets) {
+        List<SearchAnswer> tweets = new ArrayList<SearchAnswer>();
 
         SearchHits searchHits;
         searchHits = esManager.searchForInSample(query, sampledTweets);
 
+        int rank = 0;
         for (SearchHit searchHit : searchHits) {
-            tweets.add(searchHit.getSource().toString());
-            System.out.println(searchHit.getSource());
+            SearchAnswer answer = new SearchAnswer(searchHit.getSource().toString(), searchHit.sourceAsMap(), rank);
+            tweets.add(answer);
+            rank++;
+            //System.out.println(searchHit.getSource());
         }
 
         return tweets;
+    }
+
+    public static List<SearchAnswer> searchForTweetsViaESInSample(String[] expandedQuery, ElasticSearchManager esManager, List<String> sampledTweets) {
+        String query = "";
+        for (String queryTerm : expandedQuery) {
+            query += queryTerm + " ";
+        }
+
+        return searchForTweetsViaESInSample(query, esManager, sampledTweets);
     }
 
     public static Calendar getDateOfYesterday() {

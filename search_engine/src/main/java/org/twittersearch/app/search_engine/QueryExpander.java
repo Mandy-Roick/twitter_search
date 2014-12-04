@@ -19,13 +19,13 @@ public class QueryExpander {
     public static void main(String[] args) {
         double topicPercentageThreshold = 0.05; //10%
         int numOfTopWordsPerTopic = 3;
-        String date = "2014-10-21";
+        String date = "2014-10-20";
         String filePrefix = "trimmed_tm-200_" + date + "_wo_seeding";
         String[][] expandedQuery;
         if (args.length == 1 ) {
             expandedQuery = expand(args[1], topicPercentageThreshold, numOfTopWordsPerTopic, filePrefix);
         } else {
-            expandedQuery = expand("politics", topicPercentageThreshold, numOfTopWordsPerTopic, filePrefix);
+            expandedQuery = expand("marketing", topicPercentageThreshold, numOfTopWordsPerTopic, filePrefix);
         }
 
         for (String[] queryTopicElement : expandedQuery) {

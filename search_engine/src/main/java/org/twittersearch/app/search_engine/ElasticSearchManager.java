@@ -8,6 +8,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.index.query.*;
 import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.SearchHitField;
 import org.elasticsearch.search.SearchHits;
 
 import java.util.ArrayList;
@@ -25,11 +26,11 @@ public class ElasticSearchManager {
     public static void main(String[] args) {
         //Node node = NodeBuilder.nodeBuilder().local(true).node();
         //Client client = node.client();
-        Settings settings = ImmutableSettings.settingsBuilder().build();
-        TransportClient client = new TransportClient(settings);
-        client = client.addTransportAddress(new InetSocketTransportAddress("localhost", 9300));
+        //Settings settings = ImmutableSettings.settingsBuilder().build();
+        //TransportClient client = new TransportClient(settings);
+        //client = client.addTransportAddress(new InetSocketTransportAddress("localhost", 9300));
 
-        ElasticSearchIndexer.indexFromDB("2014-10-21", client);
+        //ElasticSearchIndexer.indexFromDB("2014-10-21", client);
 
         //GetResponse getResponse = client.prepareGet("twitter", "tweet", "518695575102164993")
         //        .execute()
@@ -38,7 +39,10 @@ public class ElasticSearchManager {
 
         //ElasticSearchManager esManager = new ElasticSearchManager();
         //esManager.searchFor("politics");
-        client.close();
+        //client.close();
+
+        ElasticSearchManager esManager = new ElasticSearchManager();
+        esManager.addToIndexWithUrls("2014-10-21");
     }
 
     public ElasticSearchManager() {
@@ -48,9 +52,11 @@ public class ElasticSearchManager {
         this.client = transportClient;
     }
 
-    public void addToIndex(String date) {
+    public void addToIndexWithUrls(String date) {
         ElasticSearchIndexer.indexFromDBWithUrls(date, this.client);
     }
+
+    public void addToIndex(String date) { ElasticSearchIndexer.indexFromDB(date, this.client); }
 
     public SearchHits searchFor(String query) {
         SearchResponse response = this.client.prepareSearch().setQuery(QueryBuilders.matchQuery("content", query))
@@ -81,12 +87,18 @@ public class ElasticSearchManager {
                 .setSize(60).execute().actionGet();
 
         return response.getHits();
-//        SearchHits searchHits = response.getHits();
-//        System.out.println(searchHits.totalHits());
-//        for (SearchHit searchHit : searchHits) {
-//            //System.out.println(searchHit.getId());
-//            System.out.println(searchHit.getId() + ": " + searchHit.getScore() + " : " + searchHit.getSource());
-//        }
+    }
+
+    public SearchHits searchForInSample(String[] query, Collection<String> sampledIDs) {
+        FilterBuilder filterBuilder = FilterBuilders.idsFilter("tweet").addIds(sampledIDs.toArray(new String[sampledIDs.size()]));
+        QueryBuilder queryBuilder = QueryBuilders.multiMatchQuery(query, "content", "url_content"); // first query, than fields I query on
+        FilteredQueryBuilder filteredQueryBuilder = QueryBuilders.filteredQuery(queryBuilder, filterBuilder);
+
+        SearchResponse response = this.client.prepareSearch().setQuery(filteredQueryBuilder)
+                .setFrom(0)
+                .setSize(60).execute().actionGet();
+
+        return response.getHits();
     }
 
     private SearchHits searchForUrlContentMissing(String[] tweetIds) {
@@ -108,6 +120,7 @@ public class ElasticSearchManager {
         }
 
         SearchHits tweetsWithoutUrlContent = searchForUrlContentMissing(tweetIdStrings);
+        System.out.println(tweetsWithoutUrlContent.totalHits() + " tweets still need to be indexed.");
 
         List<Long> tweetIdsWithoutUrlContent = new ArrayList<Long>();
         for (SearchHit tweetWithoutUrlContent : tweetsWithoutUrlContent) {
@@ -115,5 +128,46 @@ public class ElasticSearchManager {
         }
 
         return tweetIdsWithoutUrlContent.toArray(new Long[tweetIdsWithoutUrlContent.size()]);
+    }
+
+    public SearchHits searchForAllTweetsContainingQueryTerm(String[] query, String date) {
+        FilterBuilder filterBuilder = FilterBuilders.termFilter("created_at", date);
+        //QueryBuilder queryBuilder = QueryBuilders.multiMatchQuery("politics", "content", "url_content");
+        QueryBuilder queryBuilder = QueryBuilders.termsQuery("content", query).minimumMatch(1);
+        FilteredQueryBuilder filteredQueryBuilder = QueryBuilders.filteredQuery(queryBuilder, filterBuilder);
+
+        SearchResponse response = this.client.prepareSearch().setQuery(filteredQueryBuilder)
+                .setFrom(0).setSize(1000000).execute().actionGet();
+        return response.getHits();
+    }
+
+    public List<String> getTweetsContainingQueryTerm(String[] query, String date) {
+        SearchHits tweetsContainingQueryTerm = searchForAllTweetsContainingQueryTerm(query, date);
+
+        List<String> tweets = new ArrayList<String>();
+        for (SearchHit tweetContainingQueryTerm : tweetsContainingQueryTerm) {
+            //String tweet = tweetContainingQueryTerm.getSourceAsString();
+            String tweet = (String) tweetContainingQueryTerm.sourceAsMap().get("content");
+
+            tweets.add(tweet);
+        }
+
+        return tweets;
+    }
+
+    public long documentFrequency(String term, String date) {
+        FilterBuilder filterBuilder = FilterBuilders.termFilter("created_at", date);
+        //QueryBuilder queryBuilder = QueryBuilders.multiMatchQuery("politics", "content", "url_content");
+        QueryBuilder queryBuilder = QueryBuilders.wildcardQuery("content", "*" + term + "*");
+        FilteredQueryBuilder filteredQueryBuilder = QueryBuilders.filteredQuery(queryBuilder, filterBuilder);
+
+        SearchResponse response = this.client.prepareSearch().setQuery(filteredQueryBuilder).execute().actionGet();
+        return response.getHits().totalHits();
+    }
+
+    public long numberOfDocuments(String date) {
+        FilterBuilder filterBuilder = FilterBuilders.termFilter("created_at", date);
+        SearchResponse response = this.client.prepareSearch().setPostFilter(filterBuilder).execute().actionGet();
+        return response.getHits().totalHits();
     }
 }
