@@ -81,6 +81,7 @@ public class QueryExpander {
                 Integer[] topicIndices = typeContainer.getBestTopics(topicPercentageThreshold);
                 for (Integer topicIndex : topicIndices) {
                     TopicContainer topicForExpansion = topWords.get(topicIndex);
+                    topicForExpansion.setQueryTerm(queryElement);
                     topicsForExpansion.add(topicForExpansion);
                 }
             }

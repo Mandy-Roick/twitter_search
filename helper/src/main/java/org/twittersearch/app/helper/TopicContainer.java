@@ -14,6 +14,7 @@ public class TopicContainer implements Comparable {
     private int numberOfWords = 0; // this is for counting the number of words in the topic
     private int id;
     private String[] topWords;
+    private String queryTerm = null;
 
     public TopicContainer(int id, int score, int numberOfWords) {
         this(id, score, numberOfWords, null);
@@ -48,7 +49,13 @@ public class TopicContainer implements Comparable {
     }
 
     public String[] getTopWords(int numberOfTopWords) {
-        return Arrays.copyOfRange(this.getTopWords(), 0, numberOfTopWords);
+        List<String> topWordsAndQueryTerm = new ArrayList<String>();
+        topWordsAndQueryTerm.add(queryTerm);
+        for (int i = 0; i < numberOfTopWords; i++) {
+            topWordsAndQueryTerm.add(this.topWords[i]);
+        }
+        return topWordsAndQueryTerm.toArray(new String[topWordsAndQueryTerm.size()]);
+        // return Arrays.copyOfRange(this.getTopWords(), 0, numberOfTopWords);
     }
 
     public String[] getScoreAndTopWordsAsLine() {
@@ -58,6 +65,10 @@ public class TopicContainer implements Comparable {
         scoreAndTopWords.add(Integer.toString(this.getNumberOfWords()));
         scoreAndTopWords.addAll(Arrays.asList(this.getTopWords()));
         return scoreAndTopWords.toArray(new String[scoreAndTopWords.size()]);
+    }
+
+    public void setQueryTerm(String queryTerm) {
+        this.queryTerm = queryTerm;
     }
 
     public void addScore(int score) {
@@ -73,6 +84,11 @@ public class TopicContainer implements Comparable {
     }
 
     public void unstemmTopWords(Map<String, String> stemmingDictionary) {
+        String originalQueryTerm = stemmingDictionary.get(this.queryTerm);
+        if (originalQueryTerm != null) {
+            this.queryTerm = originalQueryTerm;
+        }
+
         String originalWord;
         for (int i = 0; i < this.topWords.length; i++) {
             originalWord = stemmingDictionary.get(this.topWords[i]);
