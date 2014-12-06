@@ -24,6 +24,11 @@ public class EvaluationResult {
         this.positions = positions;
     }
 
+    public EvaluationResult(int TP, int TN, int FP, int FN, List<Integer> positions) {
+        this(TP, TN, FP, FN);
+        this.positions = positions;
+    }
+
     public double fMeasure() {
         double precision = precision();
         double recall = recall();
@@ -42,11 +47,6 @@ public class EvaluationResult {
     public String toString() {
         String result = "";
 
-        if (this.positions != null) {
-            for (Integer position : this.positions) {
-                result += position + ", ";
-            }
-        }
         if (this.TP + this.TN + this.FP + this.FN != 0) {
             result += "TP: " + this.TP + ", ";
             result += "TN: " + this.TN + ", ";
@@ -54,6 +54,12 @@ public class EvaluationResult {
             result += "FN: " + this.FN + ", ";
             result += "F-Measure: " + this.fMeasure();
         }
+        if (this.positions != null) {
+            for (Integer position : this.positions) {
+                result += position + ", ";
+            }
+        }
+
         return result;
     }
 }

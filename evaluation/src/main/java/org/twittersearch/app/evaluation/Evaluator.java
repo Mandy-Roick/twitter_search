@@ -94,22 +94,22 @@ public class Evaluator
 
         // 2.1. Baseline simple query search
         List<SearchAnswer> baseLineAnswers = TopicSearchEngine.searchForTweetsViaESInSample(query, this.esManager, sampledTweetsIndices);
-        EvaluationResult baseLineEvaluation = evaluateResultPositions(query, baseLineAnswers, sampledTweets.size(), date);
+        EvaluationResult baseLineEvaluation = evaluateResult(query, baseLineAnswers, sampledTweets.size(), date, samplingNotOnlyExperts);
         System.out.println(baseLineEvaluation);
         printAnswers("baseline", baseLineAnswers, query, sampledTweets.size());
 
         // 2.2. Massoudi algorithm as competitor
-        String massoudisExpandedQuery = MassoudiQueryExpander.expand(query, date, 10, 50);
+        String massoudisExpandedQuery = MassoudiQueryExpander.expand(query, dateTM, 10, 50);
         printMassoudiExpandedQuery(query, date, massoudisExpandedQuery);
         System.out.println("Massoudi Expanded Query: " + massoudisExpandedQuery);
         List<SearchAnswer> massoudiAnswers = TopicSearchEngine.searchForTweetsViaESInSample(massoudisExpandedQuery, this.esManager, sampledTweetsIndices);
-        EvaluationResult massoudiEvaluation = evaluateResultPositions(query, massoudiAnswers, sampledTweets.size(), date);
+        EvaluationResult massoudiEvaluation = evaluateResult(query, massoudiAnswers, sampledTweets.size(), date, samplingNotOnlyExperts);
         System.out.println(massoudiEvaluation);
         printAnswers("massoudi", massoudiAnswers, query, sampledTweets.size());
 
         String[][] expandedQuery = TopicSearchEngine.expandQueryForGivenDate(query, dateTM);
         List<SearchAnswer> topicBasedAnswers = TopicSearchEngine.searchForTweetsViaESInSample(expandedQuery, this.esManager, sampledTweetsIndices);
-        EvaluationResult topicBasedEvaluation = evaluateResultPositions(query, topicBasedAnswers, sampledTweets.size(), date);
+        EvaluationResult topicBasedEvaluation = evaluateResult(query, topicBasedAnswers, sampledTweets.size(), date, samplingNotOnlyExperts);
         System.out.println(topicBasedEvaluation);
         printAnswers("topic-based", topicBasedAnswers, query, sampledTweets.size());
 
@@ -160,7 +160,7 @@ public class Evaluator
         }
     }
 
-    private EvaluationResult evaluateResult(String query, List<SearchAnswer> answers, int numberOfAllTweets, String date) {
+    private EvaluationResult evaluateResultFMeasure(String query, List<SearchAnswer> answers, int numberOfAllTweets, String date) {
         Map<String, Integer> evaluationFlagCounts = dbManager.selectCountOfEvaluationFlags(date);
         int realPositives = evaluationFlagCounts.get(query);
         int TP = calculateNumberOfExpertTweets(query, answers);
@@ -173,10 +173,25 @@ public class Evaluator
 
     private EvaluationResult evaluateResultPositions(String query, List<SearchAnswer> answers, int numberOfAllTweets, String date) {
         Map<String, Integer> evaluationFlagCounts = dbManager.selectCountOfEvaluationFlags(date);
-        int realPositives = evaluationFlagCounts.get(query);
         List<Integer> positions = calculatePositionsOfExpertTweets(query, answers);
 
         return new EvaluationResult(positions);
+    }
+
+    private EvaluationResult evaluateResult(String query, List<SearchAnswer> answers, int numberOfAllTweets, String date, boolean withoutFmeasure) {
+        Map<String, Integer> evaluationFlagCounts = dbManager.selectCountOfEvaluationFlags(date);
+
+        List<Integer> positions = calculatePositionsOfExpertTweets(query, answers);
+        if (withoutFmeasure) {
+            return new EvaluationResult(positions);
+        } else {
+            int realPositives = evaluationFlagCounts.get(query);
+            int TP = calculateNumberOfExpertTweets(query, answers);
+            int FP = answers.size() - TP;
+            int FN = realPositives - TP;
+            int TN = numberOfAllTweets - TP - FP - FN;
+            return new EvaluationResult(TP, TN, FP, FN, positions);
+        }
     }
 
     public double evaulateTopicModel(String query) {
