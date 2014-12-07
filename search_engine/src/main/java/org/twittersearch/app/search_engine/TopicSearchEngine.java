@@ -57,6 +57,14 @@ public class TopicSearchEngine {
         return expandedQuery;
     }
 
+    public static String[][] expandQueryForGivenDateWithFilePrefix(String query, String date, String filePrefix) {
+
+        //String filePrefix = TopicModelBuilder.learnTopicModel(calendarOfYesterday);
+        String[][] expandedQuery = QueryExpander.expand(query, 0.05, 5, filePrefix + date);
+
+        return expandedQuery;
+    }
+
     public static List<TopicContainer> expandQueryForGivenDateWithTopicIndices(String query, String date) {
 
         //String filePrefix = TopicModelBuilder.learnTopicModel(calendarOfYesterday);
@@ -136,7 +144,7 @@ public class TopicSearchEngine {
     }
 
     public static List<SearchAnswer> searchForTweetsViaESInSample(String[][] expandedQuery, ElasticSearchManager esManager, List<String> sampledTweets) {
-        List<SearchAnswer> tweets = new ArrayList<SearchAnswer>();
+        Set<SearchAnswer> tweets = new HashSet<SearchAnswer>();
         int numberOfTopics = expandedQuery.length;
 
         int topicRank = 0;
@@ -151,7 +159,7 @@ public class TopicSearchEngine {
             searchHits = esManager.searchForInSample(twitterQuery, sampledTweets);
 
             for (SearchHit searchHit : searchHits) {
-                SearchAnswer answer = new SearchAnswer(searchHit.getSource().toString(), searchHit.sourceAsMap(), rank, topicRank, numberOfTopics);
+                SearchAnswer answer = new SearchAnswer(searchHit.getId(), searchHit.getSource().toString(), searchHit.sourceAsMap(), rank, topicRank, numberOfTopics);
                 tweets.add(answer);
                 rank++;
                 //System.out.println(searchHit.getSource());
@@ -159,7 +167,7 @@ public class TopicSearchEngine {
             topicRank++;
         }
 
-        return tweets;
+        return new ArrayList<SearchAnswer>(tweets);
     }
 
     public static List<SearchAnswer> searchForTweetsViaESInSample(String query, ElasticSearchManager esManager, List<String> sampledTweets) {
@@ -170,7 +178,7 @@ public class TopicSearchEngine {
 
         int rank = 0;
         for (SearchHit searchHit : searchHits) {
-            SearchAnswer answer = new SearchAnswer(searchHit.getSource().toString(), searchHit.sourceAsMap(), rank);
+            SearchAnswer answer = new SearchAnswer(searchHit.getId(), searchHit.getSource().toString(), searchHit.sourceAsMap(), rank);
             tweets.add(answer);
             rank++;
             //System.out.println(searchHit.getSource());

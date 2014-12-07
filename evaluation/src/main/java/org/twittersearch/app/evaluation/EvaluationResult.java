@@ -11,7 +11,7 @@ public class EvaluationResult {
     private int TN = 0;
     private int FP = 0;
     private int FN = 0;
-    private List<Integer> positions = null;
+    private boolean[] positions = null;
 
     public EvaluationResult(int TP, int TN, int FP, int FN) {
         this.TP = TP;
@@ -20,11 +20,11 @@ public class EvaluationResult {
         this.FN = FN;
     }
 
-    public EvaluationResult(List<Integer> positions) {
+    public EvaluationResult(boolean[] positions) {
         this.positions = positions;
     }
 
-    public EvaluationResult(int TP, int TN, int FP, int FN, List<Integer> positions) {
+    public EvaluationResult(int TP, int TN, int FP, int FN, boolean[] positions) {
         this(TP, TN, FP, FN);
         this.positions = positions;
     }
@@ -55,8 +55,12 @@ public class EvaluationResult {
             result += "F-Measure: " + this.fMeasure();
         }
         if (this.positions != null) {
-            for (Integer position : this.positions) {
-                result += position + ", ";
+            for (boolean position : this.positions) {
+                if (position) {
+                    result += "1,";
+                } else {
+                    result += "0,";
+                }
             }
         }
 

@@ -73,7 +73,7 @@ public class ElasticSearchManager {
 
         SearchResponse response = this.client.prepareSearch().setQuery(filteredQueryBuilder)
                 .setFrom(0)
-                .setSize(60).execute().actionGet();
+                .setSize(100).execute().actionGet();
         return response.getHits();
     }
 
@@ -84,7 +84,7 @@ public class ElasticSearchManager {
 
         SearchResponse response = this.client.prepareSearch().setQuery(filteredQueryBuilder)
                 .setFrom(0)
-                .setSize(60).execute().actionGet();
+                .setSize(100).execute().actionGet();
 
         return response.getHits();
     }
@@ -96,7 +96,7 @@ public class ElasticSearchManager {
 
         SearchResponse response = this.client.prepareSearch().setQuery(filteredQueryBuilder)
                 .setFrom(0)
-                .setSize(60).execute().actionGet();
+                .setSize(100).execute().actionGet();
 
         return response.getHits();
     }
