@@ -39,7 +39,8 @@ public class MassoudiQueryExpander {
         }
 
         String[] processedQuery = processQuery(query);
-        List<MassoudiExpansionTerm> termsOccurringWithQuery = searchForExpansionTerms(processedQuery, date);
+        Set<String> stopWords = readStopWords("stop_lists/stop_words_mysql.txt");
+        List<MassoudiExpansionTerm> termsOccurringWithQuery = searchForExpansionTerms(processedQuery, date, stopWords);
 
         Set<String> expandedQuerySet = new HashSet<String>();
         for (String queryTerm : processedQuery) {
@@ -61,6 +62,21 @@ public class MassoudiQueryExpander {
         return expandedQuery;
     }
 
+    private static Set<String> readStopWords(String fileName) {
+        Set<String> result = new HashSet<String>();
+        try {
+            String line;
+            BufferedReader br = new BufferedReader(new FileReader(fileName));
+            while ((line = br.readLine()) != null) {
+                result.add(line);
+            }
+        } catch (java.io.IOException e) {
+            System.out.println("Could not read stop words.");
+            e.printStackTrace();
+        }
+        return result;
+    }
+
     private static String readMassoudiExpandedQueryFile(String fileName) {
         String inputLine;
         try {
@@ -68,13 +84,13 @@ public class MassoudiQueryExpander {
             inputLine = br.readLine();
             return inputLine;
         } catch (java.io.IOException e) {
-            System.out.println("Could not read MassoudiExpandedQuery");
+            System.out.println("Could not read MassoudiExpandedQuery.");
             e.printStackTrace();
         }
         return "";
     }
 
-    private static List<MassoudiExpansionTerm> searchForExpansionTerms(String[] query, String date) {
+    private static List<MassoudiExpansionTerm> searchForExpansionTerms(String[] query, String date, Set<String> stopWords) {
         ElasticSearchManager esManager = new ElasticSearchManager();
 
         //esManager.addToIndex(date);
@@ -85,11 +101,14 @@ public class MassoudiQueryExpander {
         for (String tweet : tweetsContainingQueryTerm) {
             String[] tweetWords = processQuery(tweet);
             //String[] tweetWords = splitString(tweet);
+            // this creation of a set first is needed to not count co-occurrences double if the word appears more than once in the tweet.
             currentCooccurringTerms = new HashSet<String>();
             for (String tweetWord : tweetWords) {
                 currentCooccurringTerms.add(tweetWord);
             }
             for (String cooccurringTerm : currentCooccurringTerms) {
+                if (stopWords.contains(cooccurringTerm)) continue;
+
                 MassoudiExpansionTerm term = terms.get(cooccurringTerm);
                 if (term == null) {
                     term = new MassoudiExpansionTerm(cooccurringTerm);
