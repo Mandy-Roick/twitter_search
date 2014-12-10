@@ -25,7 +25,8 @@ public class TopicModelBuilder {
 
     public static void main(String[] args) {
         Calendar c = Calendar.getInstance();
-        c.set(2014, 9, 20); //Months start with 0 :(
+        //c.set(2014, 9, 20);
+        c.set(2014, 11, 1); //Months start with 0 :(
         //c.add(Calendar.DATE, 1); //08 is for him a too large integer number
         learnTopicModel(c);
     }
@@ -35,8 +36,8 @@ public class TopicModelBuilder {
         String date = sdf.format(c.getTime());
         String inputFileName = "mallet_input_file_" + date + ".csv";
 
-        int numTopics = 200;
-        double topicsCutOffPercentage = 0.5/200.0;
+        int numTopics = 1000;
+        double topicsCutOffPercentage = 0.5/(double) numTopics;
         //String filePrefix = "trimmed_tm-" + numTopics + "_" + date + "_wo_seeding";
         String filePrefix = "trimmed_tm-" + numTopics + "_" + date;
 
