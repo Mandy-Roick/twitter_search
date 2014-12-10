@@ -23,7 +23,7 @@ public class TopicSearchEngine {
         //String[][] expandedQuery = expandQueryForGivenDate(query, "2014-10-08");
         //searchForTweetsViaES(expandedQuery);
 
-        String[][] expandedQuery = expandQuery(query);
+        String[][] expandedQuery = expandQueryForGivenDate(query, "2014-12-06");
         searchForTweets(expandedQuery);
     }
 
@@ -52,7 +52,7 @@ public class TopicSearchEngine {
 
         //String filePrefix = TopicModelBuilder.learnTopicModel(calendarOfYesterday);
         String filePrefix = "trimmed_tm-200_" + date;
-        String[][] expandedQuery = QueryExpander.expand(query, 0.05, 5, filePrefix);
+        String[][] expandedQuery = QueryExpander.expand(query, 0.05, 3, filePrefix);
 
         return expandedQuery;
     }
@@ -144,13 +144,13 @@ public class TopicSearchEngine {
     }
 
     public static List<SearchAnswer> searchForTweetsViaESInSample(String[][] expandedQuery, ElasticSearchManager esManager, List<String> sampledTweets) {
-        Set<SearchAnswer> tweets = new HashSet<SearchAnswer>();
+        Map<String, SearchAnswer> tweets = new HashMap<String,SearchAnswer>();
         int numberOfTopics = expandedQuery.length;
 
         int topicRank = 0;
         SearchHits searchHits;
         for (String[] topicQuery : expandedQuery) {
-            int rank = 0;
+            int rank = 1;
             String twitterQuery = "";
             for (String queryElement : topicQuery) {
                 twitterQuery += queryElement + " ";
@@ -159,15 +159,30 @@ public class TopicSearchEngine {
             searchHits = esManager.searchForInSample(twitterQuery, sampledTweets);
 
             for (SearchHit searchHit : searchHits) {
-                SearchAnswer answer = new SearchAnswer(searchHit.getId(), searchHit.getSource().toString(), searchHit.sourceAsMap(), rank, topicRank, numberOfTopics);
-                tweets.add(answer);
+                String tweetId = searchHit.getId();
+                SearchAnswer answer = new TopicBasedSearchAnswer(tweetId, searchHit.getSource().toString(), searchHit.sourceAsMap(), rank, topicRank, numberOfTopics);
+                if (tweets.containsKey(tweetId)) {
+                    SearchAnswer duplicateAnswer = tweets.get(tweetId);
+                    if (duplicateAnswer.compareTo(answer) < 0) {
+                        answer = duplicateAnswer;
+                    }
+                }
+                tweets.put(searchHit.getId(),answer);
                 rank++;
                 //System.out.println(searchHit.getSource());
             }
             topicRank++;
         }
 
-        return new ArrayList<SearchAnswer>(tweets);
+        List<SearchAnswer> answers = new ArrayList<SearchAnswer>(tweets.values());
+        Collections.sort(answers);
+        int rank = 1;
+        for (SearchAnswer answer : answers) {
+            answer.setFinalRank(rank);
+            rank++;
+        }
+
+        return answers;
     }
 
     public static List<SearchAnswer> searchForTweetsViaESInSample(String query, ElasticSearchManager esManager, List<String> sampledTweets) {

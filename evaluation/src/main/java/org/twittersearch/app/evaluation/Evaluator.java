@@ -28,19 +28,20 @@ public class Evaluator
     public final static int NUMBER_OF_ANSWERS = 100;
 
     public static void main( String[] args ) {
-        int numberOfSampledTweets = 1000;
+        int numberOfSampledTweets = 10000;
 
         Evaluator evaluator = new Evaluator();
 
         String[] queries = {"politics", "ukraine", "ebola", "sports", "economy", "basketball", "baseball", "marketing", "music", "hip hop"};
+        int[] numbersOfRelevantTweets = {145,128,78,145,71,111,154,394,497,300};
         boolean samplingNotOnlyExperts = true;
         boolean positionNotPrecision = true;
 
         for (String query : queries) {
-            //evaluator.evaluateTopicBasedSearch(query, numberOfSampledTweets, samplingNotOnlyExperts);
+            evaluator.evaluateTopicBasedSearch(query, numberOfSampledTweets, samplingNotOnlyExperts, "trimmed_tm-1000_");
 
-            String[] filePrefixes = {"trimmed_tm-50_", "trimmed_tm-100_", "trimmed_tm-200_", "trimmed_tm-300_", "trimmed_tm-500_"};
-            evaluator.evaluateTopicModels(filePrefixes, query, numberOfSampledTweets, samplingNotOnlyExperts);
+            //String[] filePrefixes = {"trimmed_tm-50_", "trimmed_tm-100_", "trimmed_tm-200_", "trimmed_tm-300_", "trimmed_tm-500_", "trimmed_tm-1000_", "trimmed_tm-2000_"};
+            //evaluator.evaluateTopicModels(filePrefixes, query, numberOfSampledTweets, samplingNotOnlyExperts);
         }
         //evaluator.evaulateTopicModel(query);
 
@@ -57,8 +58,6 @@ public class Evaluator
         return numberOfMatchingTweets;
     }
 
-    // TODO: List of Search Answers muss schon sortiert sein!
-    // TODO: Removing Duplicates => CHANGES THE RANKING!!!
     private static boolean[] calculatePositionsOfExpertTweets(String query, List<SearchAnswer> answers) {
         boolean[] positions = new boolean[NUMBER_OF_ANSWERS];
         Arrays.fill(positions, false);
@@ -86,13 +85,13 @@ public class Evaluator
     }
 
     private void evaluateTopicModels(String[] filePrefixes, String query, int numberOfSampledTweets, boolean samplingNotOnlyExperts) {
-        String date = "2014-11-21";
-        String dateTM = "2014-11-20";
+        String date = "2014-12-04";
+        String dateTM = "2014-12-03";
 
         List<String> sampledTweets = sampleTweets(query, numberOfSampledTweets, samplingNotOnlyExperts, date);
 
         System.out.println(query);
-        String filePrefixEval = "answers\\evaluation_" + query + "_" + sampledTweets.size();
+        String filePrefixEval = "answers\\evaluation_tm_" + query + "_" + sampledTweets.size();
 
         Map<String, EvaluationResult> filePrefixToResult = new HashMap<String, EvaluationResult>();
 
@@ -109,7 +108,7 @@ public class Evaluator
         printEvaluations(filePrefixEval, filePrefixToResult);
     }
 
-    public void evaluateTopicBasedSearch(String query, int numberOfSampledTweets, boolean samplingNotOnlyExperts) {
+    public void evaluateTopicBasedSearch(String query, int numberOfSampledTweets, boolean samplingNotOnlyExperts, String tmFilePrefix) {
         String date = "2014-10-21";
         String dateTM = "2014-10-20";
         // 1. Sample Tweets
@@ -134,7 +133,7 @@ public class Evaluator
         System.out.println(massoudiEvaluation);
         printAnswers("massoudi", massoudiAnswers, query, sampledTweets.size());
 
-        String[][] expandedQuery = TopicSearchEngine.expandQueryForGivenDate(query, dateTM);
+        String[][] expandedQuery = TopicSearchEngine.expandQueryForGivenDateWithFilePrefix(query, dateTM, tmFilePrefix);
         printTopicBasedExpandedQuery(query, dateTM, expandedQuery);
         List<SearchAnswer> topicBasedAnswers = TopicSearchEngine.searchForTweetsViaESInSample(expandedQuery, this.esManager, sampledTweets);
         EvaluationResult topicBasedEvaluation = evaluateResult(query, topicBasedAnswers, sampledTweets.size(), date, samplingNotOnlyExperts);
@@ -253,7 +252,6 @@ public class Evaluator
     private EvaluationResult evaluateResult(String query, List<SearchAnswer> answers, int numberOfAllTweets, String date, boolean withoutFmeasure) {
         Map<String, Integer> evaluationFlagCounts = dbManager.selectCountOfEvaluationFlags(date);
 
-        Collections.sort(answers);
         boolean[] positions = calculatePositionsOfExpertTweets(query, answers);
         if (withoutFmeasure) {
             return new EvaluationResult(positions);
