@@ -18,10 +18,10 @@ public class TopicMatcher {
     public static void main(String[] args) {
         String date1 = "2014-10-20";
         String date2 = "2014-10-21";
-        //Map<Integer, String[]> topWords1 = FileReaderHelper.readTopWords("three-day-tm-200_" + date1 + "_top_words.results");
-        //Map<Integer, String[]> topWords2 = FileReaderHelper.readTopWords("three-day-tm-200_" + date2 + "_top_words.results");
-        Map<Integer, TopicContainer> topics1 = FileReaderHelper.readTopWords("trimmed_tm-200_" + date1);
-        Map<Integer, TopicContainer> topics2 = FileReaderHelper.readTopWords("trimmed_tm-200_" + date2);
+        //Map<Integer, String[]> topWords1 = FileReaderHelper.readTopics("three-day-tm-200_" + date1 + "_top_words.results");
+        //Map<Integer, String[]> topWords2 = FileReaderHelper.readTopics("three-day-tm-200_" + date2 + "_top_words.results");
+        Map<Integer, TopicContainer> topics1 = FileReaderHelper.readTopics("trimmed_tm-200_" + date1);
+        Map<Integer, TopicContainer> topics2 = FileReaderHelper.readTopics("trimmed_tm-200_" + date2);
         Map<Integer, Integer> matching = matchTopics(topics1, topics2);
 
         //writeMatchingResultToCsv(date1 + "_and_" + date2 + "_three_days.csv",matching);

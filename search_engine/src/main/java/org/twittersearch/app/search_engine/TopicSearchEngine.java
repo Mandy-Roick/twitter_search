@@ -23,11 +23,11 @@ public class TopicSearchEngine {
         //String[][] expandedQuery = expandQueryForGivenDate(query, "2014-10-08");
         //searchForTweetsViaES(expandedQuery);
 
-        String[][] expandedQuery = expandQueryForGivenDate(query, "2014-12-06");
+        Map<Double, String[]> expandedQuery = expandQueryForGivenDate(query, "2014-12-06");
         searchForTweets(expandedQuery);
     }
 
-    public static String[][] expandQuery(String query) {
+    public static Map<Double, String[]> expandQuery(String query) {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
         Calendar calendarOfYesterday = Calendar.getInstance();
         calendarOfYesterday.setTime(new Date()); // Now use today date.
@@ -43,24 +43,24 @@ public class TopicSearchEngine {
         //}
 
         String filePrefix = TopicModelBuilder.learnTopicModel(calendarOfYesterday);
-        String[][] expandedQuery = QueryExpander.expand(query, 0.05, 5, filePrefix);
+        Map<Double, String[]> expandedQuery = QueryExpander.expand(query, 0.05, 5, filePrefix);
 
         return expandedQuery;
     }
 
-    public static String[][] expandQueryForGivenDate(String query, String date) {
+    public static Map<Double, String[]> expandQueryForGivenDate(String query, String date) {
 
         //String filePrefix = TopicModelBuilder.learnTopicModel(calendarOfYesterday);
         String filePrefix = "trimmed_tm-200_" + date;
-        String[][] expandedQuery = QueryExpander.expand(query, 0.05, 3, filePrefix);
+        Map<Double, String[]> expandedQuery = QueryExpander.expand(query, 0.05, 3, filePrefix);
 
         return expandedQuery;
     }
 
-    public static String[][] expandQueryForGivenDateWithFilePrefix(String query, String date, String filePrefix) {
+    public static Map<Double, String[]> expandQueryForGivenDateWithFilePrefix(String query, String date, String filePrefix) {
 
         //String filePrefix = TopicModelBuilder.learnTopicModel(calendarOfYesterday);
-        String[][] expandedQuery = QueryExpander.expand(query, 0.05, 5, filePrefix + date);
+        Map<Double, String[]> expandedQuery = QueryExpander.expand(query, 0.05, 5, filePrefix + date);
 
         return expandedQuery;
     }
@@ -74,9 +74,9 @@ public class TopicSearchEngine {
         return expandedQuery;
     }
 
-    public static void searchForTweets(String[][] expandedQuery) {
+    public static void searchForTweets(Map<Double, String[]> expandedQuery) {
         TwitterManager twitterManager = new TwitterManager();
-        for (String[] topicQuery : expandedQuery) {
+        for (String[] topicQuery : expandedQuery.values()) {
             try {
                 String twitterQuery = "";
                 for (String queryElement : topicQuery) {
@@ -143,35 +143,28 @@ public class TopicSearchEngine {
         return relevantTweets;
     }
 
-    public static List<SearchAnswer> searchForTweetsViaESInSample(String[][] expandedQuery, ElasticSearchManager esManager, List<String> sampledTweets) {
-        Map<String, SearchAnswer> tweets = new HashMap<String,SearchAnswer>();
-        int numberOfTopics = expandedQuery.length;
+    public static List<SearchAnswer> searchForTweetsViaESInSample(Map<Double, String[]> expandedQuery, ElasticSearchManager esManager, List<String> sampledTweets) {
+        Map<String, TopicBasedSearchAnswer> tweets = new HashMap<String,TopicBasedSearchAnswer>();
 
-        int topicRank = 0;
         SearchHits searchHits;
-        for (String[] topicQuery : expandedQuery) {
-            int rank = 1;
-            String twitterQuery = "";
-            for (String queryElement : topicQuery) {
-                twitterQuery += queryElement + " ";
-            }
-            System.out.println("--------------------" + twitterQuery + "-------------------------------");
-            searchHits = esManager.searchForInSample(twitterQuery, sampledTweets);
+        for (Map.Entry<Double,String[]> topicQuery : expandedQuery.entrySet()) {
+            String query = concatenateQuery(topicQuery.getValue());
+            System.out.println("--------------------" + query + "-------------------------------");
+            searchHits = esManager.searchForInSample(query, sampledTweets);
 
             for (SearchHit searchHit : searchHits) {
                 String tweetId = searchHit.getId();
-                SearchAnswer answer = new TopicBasedSearchAnswer(tweetId, searchHit.getSource().toString(), searchHit.sourceAsMap(), rank, topicRank, numberOfTopics);
+                double score = searchHit.getScore() + topicQuery.getKey();
+                TopicBasedSearchAnswer answer = new TopicBasedSearchAnswer(tweetId, searchHit.getSource().toString(), searchHit.sourceAsMap(), score);
                 if (tweets.containsKey(tweetId)) {
-                    SearchAnswer duplicateAnswer = tweets.get(tweetId);
-                    if (duplicateAnswer.compareTo(answer) < 0) {
-                        answer = duplicateAnswer;
-                    }
+                    TopicBasedSearchAnswer duplicateAnswer = tweets.get(tweetId);
+                    //if (duplicateAnswer.compareTo(answer) < 0) {
+                    answer.updateScore(duplicateAnswer.getScore());
+                    //}
                 }
                 tweets.put(searchHit.getId(),answer);
-                rank++;
                 //System.out.println(searchHit.getSource());
             }
-            topicRank++;
         }
 
         List<SearchAnswer> answers = new ArrayList<SearchAnswer>(tweets.values());
@@ -200,6 +193,14 @@ public class TopicSearchEngine {
         }
 
         return tweets;
+    }
+
+    public static String concatenateQuery(String[] queryArray) {
+        String query = "";
+        for (String queryTerm : queryArray) {
+            query += queryTerm + " ";
+        }
+        return query;
     }
 
     public static List<SearchAnswer> searchForTweetsViaESInSample(String[] expandedQuery, ElasticSearchManager esManager, List<String> sampledTweets) {

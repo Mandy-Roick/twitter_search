@@ -96,7 +96,7 @@ public class Evaluator
         Map<String, EvaluationResult> filePrefixToResult = new HashMap<String, EvaluationResult>();
 
         for (String filePrefix : filePrefixes) {
-            String[][] expandedQuery = TopicSearchEngine.expandQueryForGivenDateWithFilePrefix(query, dateTM, filePrefix);
+            Map<Double, String[]> expandedQuery = TopicSearchEngine.expandQueryForGivenDateWithFilePrefix(query, dateTM, filePrefix);
             printTopicBasedExpandedQuery(query, dateTM, expandedQuery);
             List<SearchAnswer> topicBasedAnswers = TopicSearchEngine.searchForTweetsViaESInSample(expandedQuery, this.esManager, sampledTweets);
             EvaluationResult topicBasedEvaluation = evaluateResult(query, topicBasedAnswers, sampledTweets.size(), date, samplingNotOnlyExperts);
@@ -133,7 +133,7 @@ public class Evaluator
         System.out.println(massoudiEvaluation);
         printAnswers("massoudi", massoudiAnswers, query, sampledTweets.size());
 
-        String[][] expandedQuery = TopicSearchEngine.expandQueryForGivenDateWithFilePrefix(query, dateTM, tmFilePrefix);
+        Map<Double,String[]> expandedQuery = TopicSearchEngine.expandQueryForGivenDateWithFilePrefix(query, dateTM, tmFilePrefix);
         printTopicBasedExpandedQuery(query, dateTM, expandedQuery);
         List<SearchAnswer> topicBasedAnswers = TopicSearchEngine.searchForTweetsViaESInSample(expandedQuery, this.esManager, sampledTweets);
         EvaluationResult topicBasedEvaluation = evaluateResult(query, topicBasedAnswers, sampledTweets.size(), date, samplingNotOnlyExperts);
@@ -214,14 +214,12 @@ public class Evaluator
         }
     }
 
-    private void printTopicBasedExpandedQuery(String query, String date, String[][] expandedQuery) {
+    private void printTopicBasedExpandedQuery(String query, String date, Map<Double,String[]> expandedQuery) {
         try {
             PrintWriter expandedQueryWriter = new PrintWriter("topic-based_" + query + "_" + date + ".results");
-            for (String[] topicQuery : expandedQuery) {
-                String line = "";
-                for (String queryElement : topicQuery) {
-                    line += queryElement + " ";
-                }
+            for (Map.Entry<Double,String[]> topicQuery : expandedQuery.entrySet()) {
+                String line = topicQuery.getKey() + " ";
+                line += TopicSearchEngine.concatenateQuery(topicQuery.getValue());
                 expandedQueryWriter.println(line);
             }
             expandedQueryWriter.close();
@@ -273,7 +271,7 @@ public class Evaluator
         String filePrefix = "trimmed_tm-" + 200 + "_" + dayBefore;
         //esManager.addToIndex(date);
 
-        Map<Integer, TopicContainer> topics = FileReaderHelper.readTopWords(filePrefix);
+        Map<Integer, TopicContainer> topics = FileReaderHelper.readTopics(filePrefix);
         List<TopicContainer> expandedQuery = TopicSearchEngine.expandQueryForGivenDateWithTopicIndices(query, dayBefore);
         // TODO: return only the content of tweets
         Map<TopicContainer, List<String>> relevantTweets = TopicSearchEngine.searchForTweetsViaES(expandedQuery, date, this.esManager, 3);

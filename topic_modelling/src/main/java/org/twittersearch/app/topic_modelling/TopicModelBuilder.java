@@ -339,7 +339,7 @@ public class TopicModelBuilder {
                 // TopicCounts encodes the topic as well as the count, therefore, we need bitwise operations.
                 int currentTopic = topicCounts[topicIndex] & model.topicMask; // isolate the topic
                 weight = topicCounts[topicIndex] >> model.topicBits; // isolate the counts
-                topics[currentTopic].addScore(weight);
+                topics[currentTopic].addTopicCount(weight);
                 topics[currentTopic].addWord(1);
                 topicIndex++;
             }
@@ -387,7 +387,7 @@ public class TopicModelBuilder {
         Collections.sort(topics);
 
         for (TopicContainer topic : topics) {
-            topWordsCsvWriter.writeNext(topic.getScoreAndTopWordsAsLine());
+            topWordsCsvWriter.writeNext(topic.getTopicCountAndTopWordsAsLine());
         }
         //topWordsCsvWriter.writeNext(line);
         topWordsCsvWriter.close();

@@ -21,14 +21,14 @@ public class QueryExpander {
         int numOfTopWordsPerTopic = 3;
         String date = "2014-10-20";
         String filePrefix = "trimmed_tm-200_" + date + "_wo_seeding";
-        String[][] expandedQuery;
+        Map<Double,String[]> expandedQuery;
         if (args.length == 1 ) {
             expandedQuery = expand(args[1], topicPercentageThreshold, numOfTopWordsPerTopic, filePrefix);
         } else {
             expandedQuery = expand("marketing", topicPercentageThreshold, numOfTopWordsPerTopic, filePrefix);
         }
 
-        for (String[] queryTopicElement : expandedQuery) {
+        for (String[] queryTopicElement : expandedQuery.values()) {
             for (String queryElement : queryTopicElement) {
                 System.out.println(queryElement);
             }
@@ -37,24 +37,24 @@ public class QueryExpander {
     }
 
     // TODO: test with different topicPercentageThresholds - 10% is for sports probably to big
-    public static String[][] expand(String query, double topicPercentageThreshold, int numOfTopWordsPerTopic, String filePrefix) {
+    public static Map<Double,String[]> expand(String query, double topicPercentageThreshold, int numOfTopWordsPerTopic, String filePrefix) {
         List<TopicContainer> topicsForExpansion = expand(query, topicPercentageThreshold, filePrefix);
-        List<String[]> expandedQuery = new ArrayList<String[]>();
+        Map<Double, String[]> expandedQuery = new HashMap<Double, String[]>();
 
         for (TopicContainer topicForExpansion : topicsForExpansion) {
-            expandedQuery.add(topicForExpansion.getTopWords(numOfTopWordsPerTopic));
+            expandedQuery.put(topicForExpansion.getScore(), topicForExpansion.getTopWords(numOfTopWordsPerTopic));
         }
 
-        return expandedQuery.toArray(new String[expandedQuery.size()][]);
+        return expandedQuery;
     }
 
     public static List<TopicContainer> expand(String query, double topicPercentageThreshold, String filePrefix) {
         String[] processedQuery = processQuery(query);
 
         Map<String, TypeContainer> types = FileReaderHelper.readTypes(filePrefix);
-        Map<Integer, TopicContainer> topWords = FileReaderHelper.readTopWords(filePrefix);
+        Map<Integer, TopicContainer> topics = FileReaderHelper.readTopics(filePrefix);
 
-        List<TopicContainer> topicsForExpansion = expandThroughTopicModel(processedQuery, types, topWords, topicPercentageThreshold);
+        List<TopicContainer> topicsForExpansion = expandThroughTopicModel(processedQuery, types, topics, topicPercentageThreshold);
         Map<String, String> stemmingDictionary = FileReaderHelper.readStemmingDictionary(filePrefix);
 
         for (TopicContainer topicForExpansion : topicsForExpansion) {
@@ -71,17 +71,18 @@ public class QueryExpander {
     }
 
     // Important to have a list as return value to hold the order
-    private static List<TopicContainer> expandThroughTopicModel(String[] query, Map<String, TypeContainer> types, Map<Integer,TopicContainer> topWords, double topicPercentageThreshold) {
+    private static List<TopicContainer> expandThroughTopicModel(String[] query, Map<String, TypeContainer> types, Map<Integer,TopicContainer> topics, double topicPercentageThreshold) {
         List<TopicContainer> topicsForExpansion = new ArrayList<TopicContainer>();
 
         for (String queryElement : query) {
             TypeContainer typeContainer = types.get(queryElement);
             if (typeContainer != null) {
 
-                Integer[] topicIndices = typeContainer.getBestTopics(topicPercentageThreshold);
-                for (Integer topicIndex : topicIndices) {
-                    TopicContainer topicForExpansion = topWords.get(topicIndex);
+                Map<Integer, Double> topicIndicesAndScores = typeContainer.getBestTopics(topicPercentageThreshold);
+                for (Map.Entry<Integer, Double> topicIndexAndScore : topicIndicesAndScores.entrySet()) {
+                    TopicContainer topicForExpansion = topics.get(topicIndexAndScore.getKey());
                     topicForExpansion.setQueryTerm(queryElement);
+                    topicForExpansion.updateScore(topicIndexAndScore.getValue());
                     topicsForExpansion.add(topicForExpansion);
                 }
             }

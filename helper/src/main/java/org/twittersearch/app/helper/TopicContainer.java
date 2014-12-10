@@ -10,23 +10,24 @@ import java.util.Map;
  */
 public class TopicContainer implements Comparable {
 
-    private int score = 0; // this is the topic count
+    private double score = 0; // this is the topic count
+    private int topicCount = 0;
     private int numberOfWords = 0; // this is for counting the number of words in the topic
     private int id;
     private String[] topWords;
     private String queryTerm = null;
 
-    public TopicContainer(int id, int score, int numberOfWords) {
-        this(id, score, numberOfWords, null);
+    public TopicContainer(int id, int topicCount, int numberOfWords) {
+        this(id, topicCount, numberOfWords, null);
     }
 
-    public TopicContainer(int id, String[] topWords) {
-        this(id, -1, -1, topWords); // assume numberOfWords and score is not needed
+    public TopicContainer(int id, String[] topWords, int topicCount) {
+        this(id, topicCount, -1, topWords); // assume numberOfWords is not needed
     }
 
-    private TopicContainer(int id, int score, int numberOfWords, String[] topWords) {
+    private TopicContainer(int id, int topicCount, int numberOfWords, String[] topWords) {
         this.id = id;
-        this.score = score;
+        this.topicCount = topicCount;
         this.numberOfWords = numberOfWords;
         this.topWords = topWords;
     }
@@ -35,7 +36,11 @@ public class TopicContainer implements Comparable {
         return id;
     }
 
-    public Integer getScore() {
+    public Integer getTopicCount() {
+        return this.topicCount;
+    }
+
+    public double getScore() {
         return this.score;
     }
 
@@ -58,21 +63,29 @@ public class TopicContainer implements Comparable {
         // return Arrays.copyOfRange(this.getTopWords(), 0, numberOfTopWords);
     }
 
-    public String[] getScoreAndTopWordsAsLine() {
-        List<String> scoreAndTopWords = new ArrayList<String>();
-        scoreAndTopWords.add(Integer.toString(this.id));
-        scoreAndTopWords.add(Integer.toString(this.getScore()));
-        scoreAndTopWords.add(Integer.toString(this.getNumberOfWords()));
-        scoreAndTopWords.addAll(Arrays.asList(this.getTopWords()));
-        return scoreAndTopWords.toArray(new String[scoreAndTopWords.size()]);
+    public String[] getTopicCountAndTopWordsAsLine() {
+        List<String> topicCountAndTopWords = new ArrayList<String>();
+        topicCountAndTopWords.add(Integer.toString(this.id));
+        topicCountAndTopWords.add(Integer.toString(this.getTopicCount()));
+        topicCountAndTopWords.add(Integer.toString(this.getNumberOfWords()));
+        topicCountAndTopWords.addAll(Arrays.asList(this.getTopWords()));
+        return topicCountAndTopWords.toArray(new String[topicCountAndTopWords.size()]);
+    }
+
+    public void calculateAndSetScore(int overallTopicCount, int numberOfTopics) {
+        this.score = this.topicCount / (double) overallTopicCount * numberOfTopics;
+    }
+
+    public void updateScore(double typesTopicCount) {
+        this.score += typesTopicCount;
     }
 
     public void setQueryTerm(String queryTerm) {
         this.queryTerm = queryTerm;
     }
 
-    public void addScore(int score) {
-        this.score += score;
+    public void addTopicCount(int topicCount) {
+        this.topicCount += topicCount;
     }
 
     public void addWord(int numberOfWords) {
@@ -102,7 +115,7 @@ public class TopicContainer implements Comparable {
     public String toString() {
         String result = "";
         result += "Id: " + this.getId() + ", ";
-        result += "Score: " + this.getScore() + ", ";
+        result += "Score: " + this.getTopicCount() + ", ";
 
         result += "TopWords: ";
         String[] topWords = this.getTopWords(3);
@@ -115,6 +128,6 @@ public class TopicContainer implements Comparable {
     @Override
     public int compareTo(Object o) {
         TopicContainer other = (TopicContainer) o;
-        return other.getScore().compareTo(this.score);
+        return other.getTopicCount().compareTo(this.topicCount);
     }
 }

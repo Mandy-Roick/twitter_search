@@ -1,6 +1,5 @@
 package org.twittersearch.app.search_engine;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -14,6 +13,12 @@ public class SearchAnswer implements Comparable {
     protected int rank;
 
     private String evaluationFlag = "";
+
+    protected SearchAnswer(String id, String source, Map<String, Object> fields) {
+        this.id = id;
+        this.source = source;
+        this.fields = fields;
+    }
 
     public SearchAnswer(String id, String source, Map<String, Object> fields, int rank) {
         this.id = id;
@@ -29,20 +34,12 @@ public class SearchAnswer implements Comparable {
         return this.evaluationFlag;
     }
 
-    public Integer getPosition() {
-        return rank;
-    }
-
     public String getId() {
         return id;
     }
 
-    public int getRank() {
+    public Integer getRank() {
         return rank;
-    }
-
-    public void setRank(int rank) {
-        this.rank = rank;
     }
 
     public void setFinalRank(int finalRank) {
@@ -62,7 +59,7 @@ public class SearchAnswer implements Comparable {
     @Override
     public int compareTo(Object o) {
         SearchAnswer other = (SearchAnswer) o;
-        return this.getPosition().compareTo(other.getPosition());
+        return this.getRank().compareTo(other.getRank());
     }
 
     @Override
@@ -71,13 +68,7 @@ public class SearchAnswer implements Comparable {
         if (other == this) return true;
         if (!(other instanceof SearchAnswer))return false;
         SearchAnswer otherMyClass = (SearchAnswer)other;
-
-        // We have to pass on the best rank.
-        if (this.getPosition() > otherMyClass.getPosition()) {
-            this.setRank(otherMyClass.getRank());
-        } else {
-            otherMyClass.setRank(this.getRank());
-        }
+        System.out.println("Oo");
 
         return this.getId().equals(otherMyClass.getId());
     }

@@ -142,16 +142,25 @@ public class FileReaderHelper {
         return typesTopics;
     }
 
-    public static Map<Integer, TopicContainer> readTopWords(String filePrefix) {
-        Map<Integer, TopicContainer> topWords = new HashMap<Integer, TopicContainer>();
+    public static Map<Integer, TopicContainer> readTopics(String filePrefix) {
+        Map<Integer, TopicContainer> topics = new HashMap<Integer, TopicContainer>();
 
         try {
             CSVReader csvReader = new CSVReader(new FileReader(filePrefix + FS_TOP_WORDS), ',', ' ');
             String[] nextLine;
+            int sumOfTopicCounts = 0;
             while ((nextLine = csvReader.readNext()) != null) {
                 int topicId = Integer.parseInt(nextLine[0]);
+                int topicCount = Integer.parseInt(nextLine[1]);
+                sumOfTopicCounts += topicCount;
                 String[] topWordsForTopic = Arrays.copyOfRange(nextLine, 3, nextLine.length);
-                topWords.put(topicId, new TopicContainer(topicId, topWordsForTopic));
+                topics.put(topicId, new TopicContainer(topicId, topWordsForTopic, topicCount));
+            }
+
+            csvReader.close();
+
+            for (TopicContainer topic : topics.values()) {
+                topic.calculateAndSetScore(sumOfTopicCounts, topics.size());
             }
 
         } catch (FileNotFoundException e) {
@@ -161,7 +170,7 @@ public class FileReaderHelper {
             System.out.println("Could not read next line in Topic File.");
             e.printStackTrace();
         }
-        return topWords;
+        return topics;
     }
 
     public static Map<Integer, Integer> readTopicCounts(String fileName) {

@@ -25,7 +25,7 @@ public class TypeContainer {
         return overallTopicCount;
     }
 
-    public Integer[] getBestTopics(double thresholdPercentage) {
+    public Map<Integer, Double> getBestTopics(double thresholdPercentage) {
         List<Map.Entry<Integer, Integer>> sortedTopics = new ArrayList<Map.Entry<Integer, Integer>>(this.topicCounts.entrySet());
 
         Collections.sort(sortedTopics, new Comparator<Map.Entry<Integer, Integer>>() {
@@ -35,15 +35,20 @@ public class TypeContainer {
             }
         });
 
-        List<Integer> bestTopics = new LinkedList<Integer>();
+        int overallTopicCount = 0;
+        for (Map.Entry<Integer, Integer> topicCount : sortedTopics) {
+            overallTopicCount += topicCount.getValue();
+        }
+
+        Map<Integer, Double> bestTopics = new HashMap<Integer, Double>();
         for (Map.Entry<Integer, Integer> topicCount : sortedTopics) {
             if( topicCount.getValue() < (this.overallTopicCount * thresholdPercentage)) {
                 break;
             }
-            bestTopics.add(topicCount.getKey());
+            bestTopics.put(topicCount.getKey(), topicCount.getValue() / (double) overallTopicCount * 100);
         }
 
-        return bestTopics.toArray(new Integer[bestTopics.size()]);
+        return bestTopics;
 
     }
 
