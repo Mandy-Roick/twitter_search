@@ -43,6 +43,7 @@ public class ElasticSearchManager {
 
         ElasticSearchManager esManager = new ElasticSearchManager();
         esManager.addToIndexWithUrls("2014-10-21");
+        //esManager.addToIndex("2014-12-04");
     }
 
     public ElasticSearchManager() {
@@ -111,6 +112,16 @@ public class ElasticSearchManager {
         return response.getHits();
     }
 
+    private long searchForUrlContentPresent(String[] tweetIds) {
+        FilterBuilder idFilterBuilder = FilterBuilders.idsFilter("tweet").addIds(tweetIds);
+        FilterBuilder existsFilterBuilder = FilterBuilders.existsFilter("url_content");
+        FilterBuilder filterBuilder = FilterBuilders.boolFilter().must(idFilterBuilder).must(existsFilterBuilder);
+
+        SearchResponse response = this.client.prepareSearch().setPostFilter(filterBuilder)
+                .setFrom(0).setSize(10000).execute().actionGet();
+        return response.getHits().getTotalHits();
+    }
+
     public Long[] tweetsInESWithoutUrlContent(Collection<Long> tweetIds) {
         String[] tweetIdStrings = new String[tweetIds.size()];
         int i = 0;
@@ -120,6 +131,8 @@ public class ElasticSearchManager {
         }
 
         SearchHits tweetsWithoutUrlContent = searchForUrlContentMissing(tweetIdStrings);
+        long tweetsWithUrlContent = searchForUrlContentPresent(tweetIdStrings);
+        System.out.println(tweetsWithUrlContent + " tweets are already indexed.");
         System.out.println(tweetsWithoutUrlContent.totalHits() + " tweets still need to be indexed.");
 
         List<Long> tweetIdsWithoutUrlContent = new ArrayList<Long>();
