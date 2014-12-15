@@ -13,7 +13,9 @@ import java.util.*;
  */
 public class UrlCollectorMax {
 
-    private static final String[] ignoreUrls = {"http://t.co/RLTg4qjBJp","http://t.co/mWSt9ZJFgF","http://t.co/E3qajsmMkp","http://t.co/4WyMTyLiWR","http://t.co/6vkvlngtt7","http://t.co/CznpZqpM0L"};
+    private static final String[] ignoreUrls = {"http://t.co/RLTg4qjBJp","http://t.co/mWSt9ZJFgF","http://t.co/E3qajsmMkp","http://t.co/4WyMTyLiWR","http://t.co/6vkvlngtt7","http://t.co/CznpZqpM0L",
+                                                "http://t.co/Imq8Bmqlpx","http://t.co/BOOjP2uQNH","http://t.co/facI0BKtqH","http://t.co/MU6l3569qF","http://t.co/pZJE2VPV61","http://t.co/pZJE2VPV61",
+                                                "http://t.co/X9qW97XEUg","http://t.co/FuMGW2gUoz","http://t.co/pxcqhZoqbg","http://t.co/Ak1gdyHoCB","http://t.co/xCMIUtFWxO"};
 
     public static void main(String[] args) {
         String date = "2014-10-21";
