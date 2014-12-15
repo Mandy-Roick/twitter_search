@@ -262,6 +262,8 @@ public class ParallelTopicModelExtension implements Serializable {
             random = new Randoms(randomSeed);
         }
 
+        int counterOfNewTypes = 0;
+        int counterOfOldTypes = 0;
         for (Instance instance : training) {
             doc++;
 
@@ -279,6 +281,9 @@ public class ParallelTopicModelExtension implements Serializable {
                     topic = sampleTopicFrom(this.typesTopicProbabilites.get(type), random);
                     if (topic == -1) {
                         topic = random.nextInt(numTopics);
+                        counterOfNewTypes++;
+                    } else {
+                        counterOfOldTypes++;
                     }
                 } else {
                     topic = random.nextInt(numTopics);
@@ -290,8 +295,9 @@ public class ParallelTopicModelExtension implements Serializable {
             }
 
             TopicAssignment t = new TopicAssignment (instance, topicSequence);
-            data.add (t);
+            data.add(t);
         }
+        System.out.println("New types: " + counterOfNewTypes + " Old types: " + counterOfOldTypes);
 
         buildInitialTypeTopicCounts();
         initializeHistograms();
