@@ -25,23 +25,29 @@ import java.util.*;
  */
 public class Evaluator
 {
-    public final static int NUMBER_OF_ANSWERS = 100;
+    public final static int NUMBER_OF_ANSWERS = 500;
 
     public static void main( String[] args ) {
-        int numberOfSampledTweets = 10000;
+        int numberOfSampledTweets = 5000;
 
         Evaluator evaluator = new Evaluator();
 
         String[] queries = {"politics", "ukraine", "ebola", "sports", "economy", "basketball", "baseball", "marketing", "music", "hip hop"};
-        int[] numbersOfRelevantTweets = {145,128,78,145,71,111,154,394,497,300};
         boolean samplingNotOnlyExperts = true;
+        String tmType = "dynamic_" + NUMBER_OF_ANSWERS;
         boolean positionNotPrecision = true;
 
         for (String query : queries) {
-            evaluator.evaluateTopicBasedSearch(query, numberOfSampledTweets, samplingNotOnlyExperts, "trimmed_tm-1000_");
+            evaluator.evaluateTopicBasedSearch(query, numberOfSampledTweets, samplingNotOnlyExperts, "trimmed_tm-notdynamic-200_");
 
-            //String[] filePrefixes = {"trimmed_tm-50_", "trimmed_tm-100_", "trimmed_tm-200_", "trimmed_tm-300_", "trimmed_tm-500_", "trimmed_tm-1000_", "trimmed_tm-2000_"};
-            //evaluator.evaluateTopicModels(filePrefixes, query, numberOfSampledTweets, samplingNotOnlyExperts);
+//            if (tmType.equals("dynamic_" + NUMBER_OF_ANSWERS)) {
+//                String[] filePrefixes = {"trimmed_tm-notdynamic-200_", "trimmed_tm-2dayseeding-200_", "trimmed_tm-7dayseeding-200_", "two-day-tm-200_"};
+//                evaluator.evaluateTopicModels(filePrefixes, query, numberOfSampledTweets, samplingNotOnlyExperts, tmType);
+//            } else {
+//                String[] filePrefixes = {"trimmed_tm-50_", "trimmed_tm-100_", "trimmed_tm-notdynamic-200_", "trimmed_tm-300_", "trimmed_tm-500_", "trimmed_tm-1000_notdynamic_", "trimmed_tm-2000_"};
+//                evaluator.evaluateTopicModels(filePrefixes, query, numberOfSampledTweets, samplingNotOnlyExperts, tmType);
+//            }
+            //evaluator.evaluateQueryExpansion("trimmed_tm-2dayseeding-200_", query, numberOfSampledTweets, samplingNotOnlyExperts);
         }
         //evaluator.evaulateTopicModel(query);
 
@@ -84,25 +90,56 @@ public class Evaluator
         this.esManager = new ElasticSearchManager();
     }
 
-    private void evaluateTopicModels(String[] filePrefixes, String query, int numberOfSampledTweets, boolean samplingNotOnlyExperts) {
+    private void evaluateTopicModels(String[] filePrefixes, String query, int numberOfSampledTweets, boolean samplingNotOnlyExperts, String tmType) {
         String date = "2014-12-04";
         String dateTM = "2014-12-03";
 
         List<String> sampledTweets = sampleTweets(query, numberOfSampledTweets, samplingNotOnlyExperts, date);
+        Map<String, Integer> evaluationFlagCounts = dbManager.selectCountOfEvaluationFlags(date);
 
         System.out.println(query);
-        String filePrefixEval = "answers\\evaluation_tm_" + query + "_" + sampledTweets.size();
+        //String filePrefixEval = "answers\\evaluation_tm_dynamic_" + query + "_" + sampledTweets.size();
+        String filePrefixEval = "answers\\evaluation_tm_" + tmType + "_" + query + "_" + sampledTweets.size();
 
         Map<String, EvaluationResult> filePrefixToResult = new HashMap<String, EvaluationResult>();
 
         for (String filePrefix : filePrefixes) {
             Map<Double, String[]> expandedQuery = TopicSearchEngine.expandQueryForGivenDateWithFilePrefix(query, dateTM, filePrefix);
-            printTopicBasedExpandedQuery(query, dateTM, expandedQuery);
+            printTopicBasedExpandedQuery(query, dateTM, expandedQuery, "");
             List<SearchAnswer> topicBasedAnswers = TopicSearchEngine.searchForTweetsViaESInSample(expandedQuery, this.esManager, sampledTweets);
-            EvaluationResult topicBasedEvaluation = evaluateResult(query, topicBasedAnswers, sampledTweets.size(), date, samplingNotOnlyExperts);
+            EvaluationResult topicBasedEvaluation = evaluateResult(query, topicBasedAnswers, sampledTweets.size(), date, samplingNotOnlyExperts, evaluationFlagCounts);
             System.out.println(topicBasedEvaluation);
             printAnswers("topic-based_" + filePrefix, topicBasedAnswers, query, sampledTweets.size());
             filePrefixToResult.put(filePrefix, topicBasedEvaluation);
+        }
+
+        printEvaluations(filePrefixEval, filePrefixToResult);
+    }
+
+    private void evaluateQueryExpansion(String filePrefixTM, String query, int numberOfSampledTweets, boolean samplingNotOnlyExperts) {
+        String date = "2014-12-04";
+        String dateTM = "2014-12-03";
+
+        List<String> sampledTweets = sampleTweets(query, numberOfSampledTweets, samplingNotOnlyExperts, date);
+        Map<String, Integer> evaluationFlagCounts = dbManager.selectCountOfEvaluationFlags(date);
+
+        System.out.println(query);
+        //String filePrefixEval = "answers\\evaluation_tm_dynamic_" + query + "_" + sampledTweets.size();
+        String filePrefixEval = "answers\\evaluation_qe_topics" + "_" + query + "_" + sampledTweets.size();
+
+        Map<String, EvaluationResult> filePrefixToResult = new HashMap<String, EvaluationResult>();
+        double[] topicPercentageThresholds = {0.01,0.05,0.1};
+        //int[] numsOfTopWordsPerTopic = {3,5,10,15,20};
+        int numOfTopWordsPerTopic = 10;
+
+        for(double topicPercentageThreshold : topicPercentageThresholds) {
+            Map<Double, String[]> expandedQuery = TopicSearchEngine.expandQueryForGivenDateWithFilePrefix(query, dateTM, filePrefixTM, topicPercentageThreshold, numOfTopWordsPerTopic);
+            printTopicBasedExpandedQuery(query, dateTM, expandedQuery, "");
+            List<SearchAnswer> topicBasedAnswers = TopicSearchEngine.searchForTweetsViaESInSample(expandedQuery, this.esManager, sampledTweets);
+            EvaluationResult topicBasedEvaluation = evaluateResult(query, topicBasedAnswers, sampledTweets.size(), date, samplingNotOnlyExperts, evaluationFlagCounts);
+            System.out.println(topicBasedEvaluation);
+            printAnswers("topic-based_" + filePrefixTM + "_notw" + topicPercentageThreshold, topicBasedAnswers, query, sampledTweets.size());
+            filePrefixToResult.put(Double.toString(topicPercentageThreshold), topicBasedEvaluation);
         }
 
         printEvaluations(filePrefixEval, filePrefixToResult);
@@ -112,33 +149,48 @@ public class Evaluator
         String date = "2014-10-21";
         String dateTM = "2014-10-20";
         // 1. Sample Tweets
+        System.out.println("1. Sampling Tweets");
         List<String> sampledTweets = sampleTweets(query, numberOfSampledTweets, samplingNotOnlyExperts, date);
+        System.out.println("2. Get evaluation flag counts from Database");
+        //Map<String, Integer> evaluationFlagCounts = dbManager.selectCountOfEvaluationFlags(date);
 
         // 2. Search for sample via Elastic Search
         System.out.println(query);
-        String filePrefix = "answers\\evaluation_" + query + "_" + sampledTweets.size();
+        String filePrefix = "answers\\evaluation_500" + query + "_" + sampledTweets.size();
 
         // 2.1. Baseline simple query search
         List<SearchAnswer> baseLineAnswers = TopicSearchEngine.searchForTweetsViaESInSample(query, this.esManager, sampledTweets);
-        EvaluationResult baseLineEvaluation = evaluateResult(query, baseLineAnswers, sampledTweets.size(), date, samplingNotOnlyExperts);
+        //EvaluationResult baseLineEvaluation = evaluateResult(query, baseLineAnswers, sampledTweets.size(), date, samplingNotOnlyExperts, evaluationFlagCounts);
+        EvaluationResult baseLineEvaluation = evaluateResultPositions(query, baseLineAnswers);
         System.out.println(baseLineEvaluation);
-        printAnswers("baseline", baseLineAnswers, query, sampledTweets.size());
+        printAnswers("baseline_500", baseLineAnswers, query, sampledTweets.size());
 
         // 2.2. Massoudi algorithm as competitor
         String massoudisExpandedQuery = MassoudiQueryExpander.expand(query, dateTM, 10, 50);
         printMassoudiExpandedQuery(query, dateTM, massoudisExpandedQuery);
         System.out.println("Massoudi Expanded Query: " + massoudisExpandedQuery);
         List<SearchAnswer> massoudiAnswers = TopicSearchEngine.searchForTweetsViaESInSample(massoudisExpandedQuery, this.esManager, sampledTweets);
-        EvaluationResult massoudiEvaluation = evaluateResult(query, massoudiAnswers, sampledTweets.size(), date, samplingNotOnlyExperts);
+        //EvaluationResult massoudiEvaluation = evaluateResult(query, massoudiAnswers, sampledTweets.size(), date, samplingNotOnlyExperts, evaluationFlagCounts);
+        EvaluationResult massoudiEvaluation = evaluateResultPositions(query, massoudiAnswers);
         System.out.println(massoudiEvaluation);
-        printAnswers("massoudi", massoudiAnswers, query, sampledTweets.size());
+        printAnswers("massoudi_500", massoudiAnswers, query, sampledTweets.size());
 
         Map<Double,String[]> expandedQuery = TopicSearchEngine.expandQueryForGivenDateWithFilePrefix(query, dateTM, tmFilePrefix);
-        printTopicBasedExpandedQuery(query, dateTM, expandedQuery);
+        printTopicBasedExpandedQuery(query, dateTM, expandedQuery, tmFilePrefix);
         List<SearchAnswer> topicBasedAnswers = TopicSearchEngine.searchForTweetsViaESInSample(expandedQuery, this.esManager, sampledTweets);
-        EvaluationResult topicBasedEvaluation = evaluateResult(query, topicBasedAnswers, sampledTweets.size(), date, samplingNotOnlyExperts);
+        //EvaluationResult topicBasedEvaluation = evaluateResult(query, topicBasedAnswers, sampledTweets.size(), date, samplingNotOnlyExperts, evaluationFlagCounts);
+        EvaluationResult topicBasedEvaluation = evaluateResultPositions(query, topicBasedAnswers);
         System.out.println(topicBasedEvaluation);
-        printAnswers("topic-based", topicBasedAnswers, query, sampledTweets.size());
+        printAnswers("topic-based_500", topicBasedAnswers, query, sampledTweets.size());
+
+        tmFilePrefix = "trimmed_tm-200_";
+        Map<Double,String[]> expandedQuery2 = TopicSearchEngine.expandQueryForGivenDateWithFilePrefix(query, dateTM, tmFilePrefix);
+        printTopicBasedExpandedQuery(query, dateTM, expandedQuery2, tmFilePrefix);
+        List<SearchAnswer> topicBasedAnswers2 = TopicSearchEngine.searchForTweetsViaESInSample(expandedQuery2, this.esManager, sampledTweets);
+        //EvaluationResult topicBasedEvaluation = evaluateResult(query, topicBasedAnswers, sampledTweets.size(), date, samplingNotOnlyExperts, evaluationFlagCounts);
+        EvaluationResult topicBasedEvaluation2 = evaluateResultPositions(query, topicBasedAnswers2);
+        System.out.println(topicBasedEvaluation2);
+        printAnswers("topic-based_500", topicBasedAnswers2, query, sampledTweets.size());
 
         printEvaluations(filePrefix, baseLineEvaluation, massoudiEvaluation, topicBasedEvaluation);
 
@@ -214,9 +266,9 @@ public class Evaluator
         }
     }
 
-    private void printTopicBasedExpandedQuery(String query, String date, Map<Double,String[]> expandedQuery) {
+    private void printTopicBasedExpandedQuery(String query, String date, Map<Double,String[]> expandedQuery, String filePrefix) {
         try {
-            PrintWriter expandedQueryWriter = new PrintWriter("topic-based_" + query + "_" + date + ".results");
+            PrintWriter expandedQueryWriter = new PrintWriter("topic-based_" + filePrefix + query + "_" + date + ".results");
             for (Map.Entry<Double,String[]> topicQuery : expandedQuery.entrySet()) {
                 String line = topicQuery.getKey() + " ";
                 line += TopicSearchEngine.concatenateQuery(topicQuery.getValue());
@@ -240,16 +292,13 @@ public class Evaluator
         return new EvaluationResult(TP, TN, FP, FN);
     }
 
-    private EvaluationResult evaluateResultPositions(String query, List<SearchAnswer> answers, int numberOfAllTweets, String date) {
-        Map<String, Integer> evaluationFlagCounts = dbManager.selectCountOfEvaluationFlags(date);
+    private EvaluationResult evaluateResultPositions(String query, List<SearchAnswer> answers) {
         boolean[] positions = calculatePositionsOfExpertTweets(query, answers);
 
         return new EvaluationResult(positions);
     }
 
-    private EvaluationResult evaluateResult(String query, List<SearchAnswer> answers, int numberOfAllTweets, String date, boolean withoutFmeasure) {
-        Map<String, Integer> evaluationFlagCounts = dbManager.selectCountOfEvaluationFlags(date);
-
+    private EvaluationResult evaluateResult(String query, List<SearchAnswer> answers, int numberOfAllTweets, String date, boolean withoutFmeasure, Map<String, Integer> evaluationFlagCounts) {
         boolean[] positions = calculatePositionsOfExpertTweets(query, answers);
         if (withoutFmeasure) {
             return new EvaluationResult(positions);

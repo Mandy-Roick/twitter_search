@@ -45,7 +45,7 @@ public class TypeContainer {
             if( topicCount.getValue() < (this.overallTopicCount * thresholdPercentage)) {
                 break;
             }
-            bestTopics.put(topicCount.getKey(), topicCount.getValue() / (double) overallTopicCount * 100);
+            bestTopics.put(topicCount.getKey(), topicCount.getValue() / (double) overallTopicCount * 200 / 100);
         }
 
         return bestTopics;

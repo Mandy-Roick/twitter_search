@@ -60,7 +60,16 @@ public class TopicSearchEngine {
     public static Map<Double, String[]> expandQueryForGivenDateWithFilePrefix(String query, String date, String filePrefix) {
 
         //String filePrefix = TopicModelBuilder.learnTopicModel(calendarOfYesterday);
-        Map<Double, String[]> expandedQuery = QueryExpander.expand(query, 0.05, 5, filePrefix + date);
+        Map<Double, String[]> expandedQuery = QueryExpander.expand(query, 0.05, 10, filePrefix + date);
+
+        return expandedQuery;
+    }
+
+    public static Map<Double, String[]> expandQueryForGivenDateWithFilePrefix(String query, String date, String filePrefix,
+                                                                              double topicPercentageThreshold, int numOfTopWordsPerTopic) {
+
+        //String filePrefix = TopicModelBuilder.learnTopicModel(calendarOfYesterday);
+        Map<Double, String[]> expandedQuery = QueryExpander.expand(query, topicPercentageThreshold, numOfTopWordsPerTopic, filePrefix + date);
 
         return expandedQuery;
     }
@@ -154,8 +163,10 @@ public class TopicSearchEngine {
 
             for (SearchHit searchHit : searchHits) {
                 String tweetId = searchHit.getId();
-                double score = searchHit.getScore() + topicQuery.getKey();
-                TopicBasedSearchAnswer answer = new TopicBasedSearchAnswer(tweetId, searchHit.getSource().toString(), searchHit.sourceAsMap(), score);
+                double searchScore = searchHit.getScore();
+                double topicScore = topicQuery.getKey();
+                double score = 2*searchHit.getScore() + topicQuery.getKey();
+                TopicBasedSearchAnswer answer = new TopicBasedSearchAnswer(tweetId, searchHit.getSource().toString(), searchHit.sourceAsMap(), score, query, searchScore, topicScore);
                 if (tweets.containsKey(tweetId)) {
                     TopicBasedSearchAnswer duplicateAnswer = tweets.get(tweetId);
                     //if (duplicateAnswer.compareTo(answer) < 0) {

@@ -8,11 +8,18 @@ import java.util.Map;
 public class TopicBasedSearchAnswer extends SearchAnswer {
 
     private double score;
+    private double topicScore;
+    private double searchScore;
+    private int doubled = 0;
+    private String expandedQuery;
     private int rank = -1;
 
-    public TopicBasedSearchAnswer(String id, String source, Map<String, Object> fields, double score) {
+    public TopicBasedSearchAnswer(String id, String source, Map<String, Object> fields, double score, String expandedQuery, double searchScore, double topicScore) {
         super(id, source, fields);
+        this.expandedQuery = expandedQuery;
         this.score = score;
+        this.searchScore = searchScore;
+        this.topicScore = topicScore;
     }
 
     public Double getScore() {
@@ -20,12 +27,26 @@ public class TopicBasedSearchAnswer extends SearchAnswer {
     }
 
     public void updateScore(double additionalScore) {
-        this.score += additionalScore;
+        if (additionalScore > this.score)
+            this.score = additionalScore;
+        this.doubled++;
     }
 
     @Override
     public void setFinalRank(int finalRank) {
         this.rank = finalRank;
+    }
+
+    @Override
+    public String toString() {
+        String result = " ";
+        result += "score: " + this.score + ", " + this.topicScore + ", " + this.searchScore + ", " + this.doubled + "; ";
+        result += "query: " + this.expandedQuery + "\n";
+        result += "\t id: " + fields.get("id") + " ";
+        result += "evaluation_flag: " + this.getEvaluationFlag() + " ";
+        result += "content: " + fields.get("content");
+
+        return result;
     }
 
     @Override

@@ -73,7 +73,7 @@ public class TopicContainer implements Comparable {
     }
 
     public void calculateAndSetScore(int overallTopicCount, int numberOfTopics) {
-        this.score = this.topicCount / (double) overallTopicCount * numberOfTopics;
+        this.score = 0;//this.topicCount / (double) overallTopicCount; //* numberOfTopics;
     }
 
     public void updateScore(double typesTopicCount) {
