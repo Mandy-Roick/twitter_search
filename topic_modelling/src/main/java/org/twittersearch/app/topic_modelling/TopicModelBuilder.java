@@ -25,10 +25,11 @@ public class TopicModelBuilder {
 
     public static void main(String[] args) {
         Calendar c = Calendar.getInstance();
-        //c.set(2014, 9, 20);
-        c.set(2014, 11, 1); //Months start with 0 :(
+        //c.set(2014, 9, 21);
+        c.set(2014, 10, 30); //Months start with 0 :(
         //c.add(Calendar.DATE, 1); //08 is for him a too large integer number
         learnTopicModel(c);
+        //learnTopicModel3Days(c);
     }
 
     public static String learnTopicModel(Calendar c) {
@@ -36,10 +37,10 @@ public class TopicModelBuilder {
         String date = sdf.format(c.getTime());
         String inputFileName = "mallet_input_file_" + date + ".csv";
 
-        int numTopics = 1000;
+        int numTopics = 200;
         double topicsCutOffPercentage = 0.5/(double) numTopics;
         //String filePrefix = "trimmed_tm-" + numTopics + "_" + date + "_wo_seeding";
-        String filePrefix = "trimmed_tm-" + numTopics + "_" + date;
+        String filePrefix = "trimmed_tm-7dayseeding-" + numTopics + "_" + date;
 
         try {
 
@@ -48,17 +49,19 @@ public class TopicModelBuilder {
             ParallelTopicModelExtension model;
 
             c.add(Calendar.DATE, -1);
-            String yesterdayTypesFileName = "trimmed_tm-" + numTopics + "_" + sdf.format(c.getTime())+ FileReaderHelper.FS_TYPE_TOPIC_COUNTS;
-            String yesterdayTopicsFileName = "trimmed_tm-" + numTopics + "_" + sdf.format(c.getTime())+ FileReaderHelper.FS_TOP_WORDS;
+            String yesterdayTypesFileName = "trimmed_tm-7dayseeding-" + numTopics + "_" + sdf.format(c.getTime())+ FileReaderHelper.FS_TYPE_TOPIC_COUNTS;
+            String yesterdayTopicsFileName = "trimmed_tm-7dayseeding-" + numTopics + "_" + sdf.format(c.getTime())+ FileReaderHelper.FS_TOP_WORDS;
             File yesterdayTopicsFile = new File(yesterdayTopicsFileName);
             if (withSeeding && yesterdayTopicsFile.exists()) {
                 BetaAndTypesContainer betaAndTypes = FileReaderHelper.readTypesAndBeta(yesterdayTypesFileName);
                 Map<Integer, Integer> topicCounts = FileReaderHelper.readTopicCounts(yesterdayTopicsFileName);
-                List<Integer> ignoreTopics = calculateIgnoreTopics(topicsCutOffPercentage, topicCounts);
+                Set<Integer> ignoreTopics = calculateIgnoreTopics(topicsCutOffPercentage, topicCounts);
 
                 System.out.println("Number of deleted topics: " + ignoreTopics.size());
                 System.out.print("Ignore Topics: ");
-                for(Integer ignoreTopic : ignoreTopics) {
+                List<Integer> ignoreTopicsList = new ArrayList<Integer>(ignoreTopics);
+                Collections.sort(ignoreTopicsList);
+                for(Integer ignoreTopic : ignoreTopicsList) {
                     System.out.print(ignoreTopic + " ");
                 }
                 System.out.println("\n");
@@ -118,8 +121,8 @@ public class TopicModelBuilder {
         }
     }
 
-    private static List<Integer> calculateIgnoreTopics(double cutOffPercentage, Map<Integer, Integer> topicCounts) {
-        List<Integer> ignoreTopics = new LinkedList<Integer>();
+    private static Set<Integer> calculateIgnoreTopics(double cutOffPercentage, Map<Integer, Integer> topicCounts) {
+        Set<Integer> ignoreTopics = new HashSet<Integer>();
         int overallTopicCountSum = 0;
         for (Integer count : topicCounts.values()) {
             overallTopicCountSum += count;
@@ -129,20 +132,21 @@ public class TopicModelBuilder {
         for (Map.Entry<Integer, Integer> topicCount : topicCounts.entrySet()) {
             if (topicCount.getValue() < (cutOffTopicCount)) {
                 ignoreTopics.add(topicCount.getKey());
+                //System.out.print(topicCount.getKey());
             }
         }
         return ignoreTopics;
     }
 
-    private static Map<String, double[]> calculateTypesSmoothedTopicCounts(BetaAndTypesContainer betaAndTypes, List<Integer> ignoreTopics, int numTopics) {
+    private static Map<String, double[]> calculateTypesSmoothedTopicCounts(BetaAndTypesContainer betaAndTypes, Set<Integer> ignoreTopics, int numTopics) {
         Map<String, double[]> result = new HashMap<String, double[]>();
         for (Map.Entry<String, TypeContainer> type : betaAndTypes.getTypes().entrySet()) {
             double[] smoothedCounts = new double[numTopics];
             Arrays.fill(smoothedCounts, betaAndTypes.getBeta());
             for (int topicIndex = 0; topicIndex < numTopics; topicIndex++) {
+                if (ignoreTopics.contains(topicIndex)) continue;
                 smoothedCounts[topicIndex] += type.getValue().getTopicCountForTopic(topicIndex);
             }
-            //TODO: throw out topics which have topic count < 5% of all topic counts
 
             result.put(type.getKey(), smoothedCounts);
         }
@@ -150,13 +154,13 @@ public class TopicModelBuilder {
     }
 
     public static String learnTopicModel3Days(Calendar endDateCalendar) {
-        int numberOfDays = 4;
+        int numberOfDays = 2;
 
         String date = sdf.format(endDateCalendar.getTime());
         String inputFileName = "mallet_input_file_" + date + ".csv";
 
         int numTopics = 200;
-        String filePrefix = "five-day-tm-" + numTopics + "_" + date;
+        String filePrefix = "two-day-tm-" + numTopics + "_" + date;
 
         try {
             List<String> inputFileNames = new LinkedList<String>();
